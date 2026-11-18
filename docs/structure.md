@@ -19,9 +19,9 @@ simple-crud/
 │   ├── app.controller.ts            Endpoint GET / (hello) — contoh bawaan
 │   ├── app.service.ts               Logika endpoint hello
 │   ├── generated/                   Output Prisma client — jangan diedit manual
-│   ├── common/                      🔨 Guard JWT/Roles, decorator @Roles, exception filter
-│   ├── auth/                        🔨 Register/login, JWT strategy, DTO auth
-│   ├── books/                       🔨 CRUD katalog buku
+│   ├── common/                      Lintas modul: prisma/, guards/, decorators/, types/
+│   ├── auth/                        Register/login/me, JWT (JwtModule global), DTO auth
+│   ├── books/                       CRUD katalog buku
 │   ├── members/                     🔨 CRUD anggota (identitas peminjam)
 │   ├── loans/                       🔨 Peminjaman, pengembalian, kehilangan
 │   └── fines/                       🔨 Daftar denda & pelunasan
@@ -42,7 +42,7 @@ simple-crud/
 └── .prettierrc                  Konfigurasi formatter
 ```
 
-> 🔨 = folder fitur yang dibuat saat implementasi phase 1 (belum ada di repo).
+> 🔨 = folder yang belum dibuat (menyusul di fase berikutnya phase 1).
 
 ## Tanggung Jawab per Folder
 
