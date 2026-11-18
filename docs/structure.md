@@ -11,7 +11,9 @@ simple-crud/
 ├── docs/                        	Dokumentasi proyek
 │   ├── prd.md                      Kebutuhan produk: fitur + alasannya
 │   ├── erd.md                      Struktur database & relasi
-│   └── structure.md                Dokumen ini
+│   ├── structure.md                Dokumen ini
+│   ├── testing.md                  Panduan testing: pola, resep, aturan
+│   └── test-report.md              Laporan hasil run: 70/70 + coverage
 │
 ├── src/                         	 Sumber kode aplikasi
 │   ├── main.ts                      Bootstrap: helmet, port, inisialisasi app
@@ -56,7 +58,7 @@ simple-crud/
 | `src/generated/`         | Hasil generate Prisma client                             | Dipakai service                      | **Diedit manual**                 |
 | `prisma/schema.prisma`   | Definisi model, enum, relasi                             | Diubah + `migrate`                 | Dipanggil dari controller               |
 | `test/`                  | Test e2e — uji alur HTTP utuh                           | Import `AppModule`                 | Test logika detail (itu unit test)      |
-| `docs/`                  | PRD, ERD, struktur, testing                              | —                                   | —                                      |
+| `docs/`                  | PRD, ERD, struktur, panduan & laporan testing            | —                                   | —                                      |
 | `.env`                   | `DATABASE_URL`, `FINE_PER_DAY`, `PORT`             | Diisi lokal                          | Di-commit ke git                        |
 
 ## Aturan SOC

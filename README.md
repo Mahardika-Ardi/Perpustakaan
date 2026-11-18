@@ -11,6 +11,8 @@ implementasi simple CRUD dengan dokumentasi lengkap.
 | [PRD](./docs/prd.md)                    | Kebutuhan produk: masalah, tujuan, fitur + alasannya |
 | [ERD](./docs/erd.md)                    | Struktur database, relasi, aturan bisnis             |
 | [Struktur project](./docs/structure.md) | Tanggung jawab folder/file & aturan SOC              |
+| [Panduan testing](./docs/testing.md)    | Cara menulis, menjalankan, & konvensi unit test      |
+| [Laporan testing](./docs/test-report.md)| Hasil run terakhir: 70/70 lulus + coverage           |
 
 ## Fitur (Phase 1)
 
@@ -83,7 +85,7 @@ src/
 └── fines/           # denda & pelunasan
 prisma/              # schema.prisma — sumber kebenaran database
 test/                # test e2e
-docs/                # prd, erd, structure
+docs/                # prd, erd, structure, testing, test-report
 ```
 
 Penjelasan lengkap tiap folder & aturan separation of concerns ada di
