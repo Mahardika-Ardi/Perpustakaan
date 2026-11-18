@@ -1,114 +1,109 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Simple CRUD — Sistem Perpustakaan
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend sistem perpustakaan bertema **peminjaman & pengembalian buku**, lengkap dengan
+auth berbasis role dan denda keterlambatan/kehilangan. Dibuat sebagai tugas magang:
+implementasi simple CRUD dengan dokumentasi lengkap.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Dokumentasi
 
-## Description
+| Dokumen                                | Isi                                                  |
+| -------------------------------------- | ---------------------------------------------------- |
+| [PRD](./docs/prd.md)                    | Kebutuhan produk: masalah, tujuan, fitur + alasannya |
+| [ERD](./docs/erd.md)                    | Struktur database, relasi, aturan bisnis             |
+| [Struktur project](./docs/structure.md) | Tanggung jawab folder/file & aturan SOC              |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Fitur (Phase 1)
 
-## Project setup
+- CRUD Buku & Anggota
+- Autentikasi JWT dengan role `PETUGAS` (admin) & `ANGGOTA` (peminjam)
+- Peminjaman, pengembalian, dan penandaan kehilangan buku
+- Denda keterlambatan (`hari × FINE_PER_DAY`) & kehilangan (nilai buku)
+- Blokir pinjam baru selama denda belum lunas; pelunasan manual oleh petugas
+- 🔜 Dokumentasi API (Swagger) — menyusul setelah fitur jadi
 
-```bash
-$ npm install
-```
+> **Status:** dokumentasi lengkap (PRD + ERD + struktur) sudah selesai; implementasi
+> fitur berjalan tahap demi tahap mengikuti urutan di PRD.
 
-## Compile and run the project
+## Tech Stack
 
-```bash
-# development
-$ npm run start
+- **[NestJS](https://nestjs.com/)** 12 + TypeScript — framework backend
+- **[Prisma](https://www.prisma.io/)** 7 + PostgreSQL — ORM & database
+- **Vitest** + Supertest — unit test & e2e test
+- **Helmet**, **class-validator**, **oxlint**, **Prettier**
 
-# watch mode
-$ npm run start:dev
+## Requirements
 
-# production mode
-$ npm run start:prod
-```
+- Node.js 20+
+- PostgreSQL (lokal, Docker, atau Prisma Postgres seperti pada `.env` bawaan)
 
-## Run tests
+## Setup
 
 ```bash
-# unit tests
-$ npm run test
+# 1. Install dependencies
+npm install
 
-# e2e tests
-$ npm run test:e2e
+# 2. Siapkan file .env — minimal isi:
+#    DATABASE_URL="postgres://..."     ← koneksi database (wajib)
+#    FINE_PER_DAY=1000                 ← tarif denda rupiah/hari
+#    PORT=3000                         ← opsional, default 3000
 
-# test coverage
-$ npm run test:cov
+# 3. Buat tabel sesuai schema
+npx prisma migrate dev
+
+# 4. Jalankan mode development
+npm run start:dev
 ```
 
-## Deployment
+Aplikasi berjalan di `http://localhost:3000`.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Perintah
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Perintah               | Fungsi                       |
+| ---------------------- | ---------------------------- |
+| `npm run start:dev`  | Jalankan server (watch mode) |
+| `npm run build`      | Build untuk produksi         |
+| `npm run start:prod` | Jalankan hasil build         |
+| `npm test`           | Unit test                    |
+| `npm run test:e2e`   | E2E test                     |
+| `npm run test:cov`   | Test + coverage              |
+| `npm run lint`       | Lint (oxlint)                |
+| `npm run format`     | Format kode (Prettier)       |
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+## Struktur Project
+
+```
+src/
+├── main.ts          # bootstrap (helmet, port)
+├── app.module.ts    # root module
+├── common/          # guard, decorator, filter lintas modul
+├── auth/            # register/login, JWT
+├── books/           # CRUD buku
+├── members/         # CRUD anggota
+├── loans/           # pinjam, return, lost
+└── fines/           # denda & pelunasan
+prisma/              # schema.prisma — sumber kebenaran database
+test/                # test e2e
+docs/                # prd, erd, structure
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Penjelasan lengkap tiap folder & aturan separation of concerns ada di
+[docs/structure.md](./docs/structure.md).
 
-## Observability
+## Endpoint (Ringkas)
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+```
+/auth        POST /register, POST /login, GET /me
+/books       GET, POST, GET/:id, PATCH/:id, DELETE/:id
+/members     GET, POST, GET/:id, PATCH/:id, DELETE/:id
+/loans       GET, POST, GET/:id, PATCH/:id, DELETE/:id
+/loans       POST /:id/return, POST /:id/lost
+/fines       GET, GET/:id, PATCH /:id/pay
+```
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+Detail payload, aturan bisnis (blokir 409, perhitungan denda), dan hak akses per role
+ada di [docs/prd.md](./docs/prd.md). Dokumentasi API interaktif (Swagger) menyusul
+setelah implementasi fitur selesai.
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+## Lisensi
 
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED
