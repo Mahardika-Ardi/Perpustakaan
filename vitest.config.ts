@@ -9,5 +9,12 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    coverage: {
+      provider: 'v8',
+      // Coverage jujur: semua kode sumber ikut dihitung (file yang tidak
+      // tersentuh test akan tampil 0%), kecuali hasil generate & file spec.
+      include: ['src/**/*.ts'],
+      exclude: ['src/generated/**', 'src/**/*.spec.ts'],
+    },
   },
 });
