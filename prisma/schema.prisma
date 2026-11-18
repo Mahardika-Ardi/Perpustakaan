@@ -8,13 +8,108 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  PETUGAS
+  ANGGOTA
+}
+
+enum LoanStatus {
+  DIPINJAM
+  DIKEMBALIKAN
+  HILANG
+}
+
+enum FineReason {
+  TERLAMBAT
+  HILANG
+}
+
+enum FineStatus {
+  BELUM_LUNAS
+  LUNAS
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String    @id @default(uuid())
+  email     String    @unique
   username  String?
   password  String
-  
+  role      Role      @default(ANGGOTA)
+
+  member    Member?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Member {
+  id       String    @id @default(uuid())
+  code     String    @unique
+  name     String
+  email    String
+  phone    String
+  nim      String?
+  address  String?
+  joinedAt DateTime? @default(now())
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  loans Loan[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Book {
+  id        String  @id @default(uuid())
+  title     String
+  author    String
+  isbn      String  @unique
+  publisher String
+  year      Int
+  value     Int
+  stock     Int     @default(1)
+
+  loans Loan[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Loan {
+  id         String     @id @default(uuid())
+  status     LoanStatus @default(DIPINJAM)
+  borrowedAt DateTime   @default(now())
+  dueAt      DateTime
+  returnedAt DateTime?
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id])
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id])
+
+  fine Fine?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Fine {
+  id     String      @id @default(uuid())
+  amount Int
+  reason FineReason
+  status FineStatus  @default(BELUM_LUNAS)
+  paidAt DateTime?
+
+  loanId String @unique
+  loan   Loan   @relation(fields: [loanId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deletedAt DateTime?
 }
