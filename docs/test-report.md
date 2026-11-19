@@ -1,6 +1,6 @@
-# Laporan Testing
+# Laporan Testing — Sistem Perpustakaan
 
-> Laporan hasil pengujian project **Perpustakaan — Peminjaman & Pengembalian Buku**.
+> Laporan hasil pengujian project **Sistem Perpustakaan**.
 > Panduan cara menulis test: [`docs/testing.md`](./testing.md).
 
 ## 1. Metadata

@@ -1,4 +1,4 @@
-# Simple CRUD — Sistem Perpustakaan
+# Sistem Perpustakaan — Backend CRUD (NestJS)
 
 Backend sistem perpustakaan bertema **peminjaman & pengembalian buku**, lengkap dengan
 auth berbasis role dan denda keterlambatan/kehilangan. Dibuat sebagai tugas magang:

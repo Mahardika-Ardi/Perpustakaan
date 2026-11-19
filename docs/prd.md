@@ -1,4 +1,4 @@
-# PRD — Sistem Perpustakaan Digital (Peminjaman & Pengembalian)
+# PRD — Sistem Perpustakaan Digital
 
 | | |
 |---|---|

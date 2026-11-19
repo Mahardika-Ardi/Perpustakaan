@@ -1,4 +1,4 @@
-# ERD — Sistem Perpustakaan (Peminjaman & Pengembalian)
+# ERD — Sistem Perpustakaan
 
 > **ERD (Entity Relationship Diagram)**: cetak biru struktur database yang memetakan tabel, kolom, dan relasinya.
 > Dokumen ini menjadi acuan sebelum `prisma/schema.prisma` ditulis.

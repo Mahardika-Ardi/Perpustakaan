@@ -1,7 +1,7 @@
 {
-  "name": "simple-crud",
+  "name": "perpustakaan",
   "version": "0.0.1",
-  "description": "",
+  "description": "Backend sistem perpustakaan — CRUD buku & anggota, peminjaman/pengembalian, denda, & JWT auth",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

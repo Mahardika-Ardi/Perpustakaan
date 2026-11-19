@@ -1,4 +1,4 @@
-# Dokumentasi API — Perpustakaan (Peminjaman & Pengembalian Buku)
+# Dokumentasi API — Sistem Perpustakaan
 
 > Dokumen ini berisi **semua endpoint** beserta contoh **request** dan **response asli**
 > yang diverifikasi langsung dari server berjalan (19 November 2026, 40 skenario sukses & error).
@@ -12,7 +12,7 @@
 3. [Autentikasi](#3-autentikasi)
 4. [Hak Akses](#4-hak-akses)
 5. [Format Error Umum](#5-format-error-umum)
-6. [Konfigurasi & Enum](#6-konfigurasi--enum)
+6. [Konfigurasi &amp; Enum](#6-konfigurasi--enum)
 7. [Endpoint — Health](#7-endpoint--health)
 8. [Endpoint — Auth](#8-endpoint--auth)
 9. [Endpoint — Books](#9-endpoint--books)
@@ -26,24 +26,24 @@
 
 ## 1. Ringkasan
 
-| Item | Nilai |
-|---|---|
-| Base URL | `http://localhost:<PORT>` (default `3000`; contoh di dokumen ini memakai `4000` sesuai `.env`) |
-| Format | JSON (`Content-Type: application/json`) |
-| Autentikasi | JWT Bearer — `Authorization: Bearer <accessToken>` |
-| Docs interaktif | `GET /docs` (Swagger UI) · `GET /docs-json` (spec OpenAPI) |
-| Stack | NestJS 12 · Prisma 7 · PostgreSQL · argon2id · helmet |
+| Item            | Nilai                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------ |
+| Base URL        | `http://localhost:<PORT>` (default `3000`; contoh di dokumen ini memakai `4000` sesuai `.env`) |
+| Format          | JSON (`Content-Type: application/json`)                                                              |
+| Autentikasi     | JWT Bearer — `Authorization: Bearer <accessToken>`                                                  |
+| Docs interaktif | `GET /docs` (Swagger UI) · `GET /docs-json` (spec OpenAPI)                                        |
+| Stack           | NestJS 12 · Prisma 7 · PostgreSQL · argon2id · helmet                                              |
 
 **Jumlah endpoint:** 22 API + 1 health.
 
-| Modul | Endpoint | Metode |
-|---|---|---|
-| Health | `/` | GET |
-| Auth | `/auth/register`, `/auth/login`, `/auth/me` | POST, POST, GET |
-| Books | `/books`, `/books/:id` | GET×2, POST, PATCH, DELETE |
-| Members | `/members`, `/members/:id` | GET×2, POST, PATCH, DELETE |
-| Loans | `/loans`, `/loans/:id`, `/loans/:id/return`, `/loans/:id/lost` | GET×2, POST, PATCH×2, DELETE |
-| Fines | `/fines`, `/fines/:id`, `/fines/:id/pay` | GET×2, PATCH |
+| Modul   | Endpoint                                                               | Metode                         |
+| ------- | ---------------------------------------------------------------------- | ------------------------------ |
+| Health  | `/`                                                                  | GET                            |
+| Auth    | `/auth/register`, `/auth/login`, `/auth/me`                      | POST, POST, GET                |
+| Books   | `/books`, `/books/:id`                                             | GET×2, POST, PATCH, DELETE    |
+| Members | `/members`, `/members/:id`                                         | GET×2, POST, PATCH, DELETE    |
+| Loans   | `/loans`, `/loans/:id`, `/loans/:id/return`, `/loans/:id/lost` | GET×2, POST, PATCH×2, DELETE |
+| Fines   | `/fines`, `/fines/:id`, `/fines/:id/pay`                         | GET×2, PATCH                  |
 
 ## 2. Cara Menjalankan
 
@@ -88,12 +88,12 @@ Token berlaku **24 jam** (`exp` = `iat` + 86400 detik), berisi klaim `sub` (id u
 
 ## 4. Hak Akses
 
-| Aksi | `POST`/`PATCH`/`DELETE` | `GET` |
-|---|---|---|
-| **PETUGAS** (petugas perpustakaan) | ✅ boleh | ✅ boleh |
-| **ANGGOTA** (peminjam) | ❌ `403` | ✅ boleh |
-| **Belum login** | ❌ `401` | ❌ `401` |
-| **Publik** | — hanya `/auth/register`, `/auth/login` | `GET /` |
+| Aksi                                     | `POST`/`PATCH`/`DELETE`                | `GET`    |
+| ---------------------------------------- | -------------------------------------------- | ---------- |
+| **PETUGAS** (petugas perpustakaan) | ✅ boleh                                     | ✅ boleh   |
+| **ANGGOTA** (peminjam)             | ❌ `403`                                   | ✅ boleh   |
+| **Belum login**                    | ❌ `401`                                   | ❌ `401` |
+| **Publik**                         | — hanya `/auth/register`, `/auth/login` | `GET /`  |
 
 Respons `403` (role salah):
 
@@ -109,14 +109,14 @@ Respons `403` (role salah):
 
 Semua error memakai bentuk standar NestJS. Contoh asli per status:
 
-| Status | Kapan terjadi | Contoh `message` |
-|---|---|---|
-| `400` | Body tidak valid (validasi DTO) / `:id` bukan UUID | array pesan validasi (lihat §9.3) |
-| `401` | Token hilang/salah/kedaluwarsa, login gagal | `"Token tidak ditemukan"`, `"Email atau password salah"` |
-| `403` | Role bukan PETUGAS pada endpoint mutasi | `"Akses ditolak: role Anda tidak memenuhi syarat"` |
-| `404` | Data tidak ditemukan (atau sudah soft-delete) | `"Buku dengan id \"…\" tidak ditemukan"` |
-| `409` | Konflik bisnis (duplikat, stok habis, blokir denda, state ganda) | `"ISBN sudah terdaftar untuk buku lain"` |
-| `500` | Kesalahan tak terduga server | — |
+| Status  | Kapan terjadi                                                    | Contoh `message`                                           |
+| ------- | ---------------------------------------------------------------- | ------------------------------------------------------------ |
+| `400` | Body tidak valid (validasi DTO) / `:id` bukan UUID             | array pesan validasi (lihat §9.3)                           |
+| `401` | Token hilang/salah/kedaluwarsa, login gagal                      | `"Token tidak ditemukan"`, `"Email atau password salah"` |
+| `403` | Role bukan PETUGAS pada endpoint mutasi                          | `"Akses ditolak: role Anda tidak memenuhi syarat"`         |
+| `404` | Data tidak ditemukan (atau sudah soft-delete)                    | `"Buku dengan id \"…\" tidak ditemukan"`                  |
+| `409` | Konflik bisnis (duplikat, stok habis, blokir denda, state ganda) | `"ISBN sudah terdaftar untuk buku lain"`                   |
+| `500` | Kesalahan tak terduga server                                     | —                                                           |
 
 Contoh `404` (asli):
 
@@ -132,22 +132,22 @@ Contoh `404` (asli):
 
 **Env (`.env`)**
 
-| Variabel | Default | Fungsi |
-|---|---|---|
-| `PORT` | `3000` | Port server (contoh dokumen: `4000`) |
-| `DATABASE_URL` | — | Koneksi PostgreSQL |
-| `JWT_SECRET` | — | Kunci tanda tangan token |
-| `LOAN_DURATION_DAYS` | `7` | Lama pinjam (hari) → `dueAt` |
-| `FINE_PER_DAY` | `5000` | Denda per hari keterlambatan (Rp) |
+| Variabel               | Default  | Fungsi                                 |
+| ---------------------- | -------- | -------------------------------------- |
+| `PORT`               | `3000` | Port server (contoh dokumen: `4000`) |
+| `DATABASE_URL`       | —       | Koneksi PostgreSQL                     |
+| `JWT_SECRET`         | —       | Kunci tanda tangan token               |
+| `LOAN_DURATION_DAYS` | `7`    | Lama pinjam (hari) → `dueAt`        |
+| `FINE_PER_DAY`       | `5000` | Denda per hari keterlambatan (Rp)      |
 
 **Enum**
 
-| Enum | Nilai |
-|---|---|
-| `Role` (User) | `PETUGAS`, `ANGGOTA` |
-| `LoanStatus` | `DIPINJAM`, `DIKEMBALIKAN`, `HILANG` |
-| `FineStatus` | `BELUM_LUNAS`, `LUNAS` |
-| `FineReason` | `TERLAMBAT`, `HILANG` |
+| Enum            | Nilai                                      |
+| --------------- | ------------------------------------------ |
+| `Role` (User) | `PETUGAS`, `ANGGOTA`                   |
+| `LoanStatus`  | `DIPINJAM`, `DIKEMBALIKAN`, `HILANG` |
+| `FineStatus`  | `BELUM_LUNAS`, `LUNAS`                 |
+| `FineReason`  | `TERLAMBAT`, `HILANG`                  |
 
 **Aturan bisnis penting**
 
@@ -186,15 +186,15 @@ Membuat **User (role ANGGOTA) + Member** dalam satu transaksi. Kode anggota auto
 
 **Request body**
 
-| Field | Tipe | Wajib | Ketentuan |
-|---|---|---|---|
-| `email` | string | ✅ | format email, unik |
-| `username` | string | ❌ | max 50, unik bila diisi |
-| `password` | string | ✅ | 8–72 karakter |
-| `name` | string | ✅ | max 120 |
-| `phone` | string | ✅ | max 32 |
-| `nim` | string | ❌ | max 32 |
-| `address` | string | ❌ | max 255 |
+| Field        | Tipe   | Wajib | Ketentuan               |
+| ------------ | ------ | ----- | ----------------------- |
+| `email`    | string | ✅    | format email, unik      |
+| `username` | string | ❌    | max 50, unik bila diisi |
+| `password` | string | ✅    | 8–72 karakter          |
+| `name`     | string | ✅    | max 120                 |
+| `phone`    | string | ✅    | max 32                  |
+| `nim`      | string | ❌    | max 32                  |
+| `address`  | string | ❌    | max 255                 |
 
 ```bash
 curl -X POST http://localhost:4000/auth/register \
@@ -342,15 +342,15 @@ curl http://localhost:4000/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
 
 **Request body**
 
-| Field | Tipe | Wajib | Ketentuan |
-|---|---|---|---|
-| `title` | string | ✅ | max 255 |
-| `author` | string | ✅ | max 255 |
-| `isbn` | string | ✅ | max 32, **unik** |
-| `publisher` | string | ✅ | max 255 |
-| `year` | int | ✅ | 1400–2100 |
-| `value` | int | ✅ | ≥ 0 (dasar denda hilang) |
-| `stock` | int | ❌ | ≥ 0, default 1 |
+| Field         | Tipe   | Wajib | Ketentuan                 |
+| ------------- | ------ | ----- | ------------------------- |
+| `title`     | string | ✅    | max 255                   |
+| `author`    | string | ✅    | max 255                   |
+| `isbn`      | string | ✅    | max 32, **unik**    |
+| `publisher` | string | ✅    | max 255                   |
+| `year`      | int    | ✅    | 1400–2100                |
+| `value`     | int    | ✅    | ≥ 0 (dasar denda hilang) |
+| `stock`     | int    | ❌    | ≥ 0, default 1           |
 
 ```bash
 curl -X POST http://localhost:4000/books \
@@ -533,14 +533,14 @@ kecuali `userId` diisi untuk menyambungkan ke User yang sudah ada (1:1).
 
 **Request body**
 
-| Field | Tipe | Wajib | Ketentuan |
-|---|---|---|---|
-| `name` | string | ✅ | max 120 |
-| `email` | string | ✅ | format email, unik |
-| `phone` | string | ✅ | max 32 |
-| `nim` | string | ❌ | max 32 |
-| `address` | string | ❌ | max 255 |
-| `userId` | uuid-string | ❌ | User yang sudah ada (opsional) |
+| Field       | Tipe        | Wajib | Ketentuan                      |
+| ----------- | ----------- | ----- | ------------------------------ |
+| `name`    | string      | ✅    | max 120                        |
+| `email`   | string      | ✅    | format email, unik             |
+| `phone`   | string      | ✅    | max 32                         |
+| `nim`     | string      | ❌    | max 32                         |
+| `address` | string      | ❌    | max 255                        |
+| `userId`  | uuid-string | ❌    | User yang sudah ada (opsional) |
 
 ```bash
 curl -X POST http://localhost:4000/members \
@@ -671,10 +671,10 @@ curl http://localhost:4000/loans/7ee99ef6-372d-439d-a9bb-546877787a0b \
 
 **Request body**
 
-| Field | Tipe | Wajib | Ketentuan |
-|---|---|---|---|
-| `memberId` | uuid-string | ✅ | id **Member** (dari `GET /auth/me` → `member.id` atau `GET /members`) |
-| `bookId` | uuid-string | ✅ | id buku dengan `stock > 0` |
+| Field        | Tipe        | Wajib | Ketentuan                                                                          |
+| ------------ | ----------- | ----- | ---------------------------------------------------------------------------------- |
+| `memberId` | uuid-string | ✅    | id **Member** (dari `GET /auth/me` → `member.id` atau `GET /members`) |
+| `bookId`   | uuid-string | ✅    | id buku dengan `stock > 0`                                                       |
 
 **Aturan:** stok dikurangi · `dueAt` = sekarang + `LOAN_DURATION_DAYS` (default 7 hari) ·
 ditolak `409` bila stok habis **atau** anggota punya denda `BELUM_LUNAS`.
@@ -1037,15 +1037,15 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/loans \
 
 ## 14. Batasan yang Diketahui
 
-| Batasan | Keterangan |
-|---|---|
-| Tanpa pagination / filter / sort | `GET` list mengembalikan **semua** data aktif — fine untuk data kecil (skala magang) |
-| Soft delete tidak di-rollback | Data terhapus hanya hilang dari tampilan; tidak ada endpoint restore |
-| 1 peminjaman = 1 buku | Belum ada pivot `LoanItem` — banyak buku = banyak request `POST /loans` |
-| Pelunasan manual | Tidak ada pembayaran otomatis — petugas memproses via `PATCH /fines/:id/pay` |
-| Tanpa refresh token | Token berlaku 24 jam; habis → login ulang |
-| `GET /fines` tanpa filter | Tidak ada query `?status=BELUM_LUNAS` — filter dilakukan di sisi klien |
-| Swagger `helmet` | `contentSecurityPolicy` dimatikan agar Swagger UI bisa memuat asetnya; header keamanan lain tetap aktif |
+| Batasan                          | Keterangan                                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Tanpa pagination / filter / sort | `GET` list mengembalikan **semua** data aktif — fine untuk data kecil (skala magang)             |
+| Soft delete tidak di-rollback    | Data terhapus hanya hilang dari tampilan; tidak ada endpoint restore                                      |
+| 1 peminjaman = 1 buku            | Belum ada pivot `LoanItem` — banyak buku = banyak request `POST /loans`                              |
+| Pelunasan manual                 | Tidak ada pembayaran otomatis — petugas memproses via `PATCH /fines/:id/pay`                           |
+| Tanpa refresh token              | Token berlaku 24 jam; habis → login ulang                                                                |
+| `GET /fines` tanpa filter      | Tidak ada query `?status=BELUM_LUNAS` — filter dilakukan di sisi klien                                 |
+| Swagger `helmet`               | `contentSecurityPolicy` dimatikan agar Swagger UI bisa memuat asetnya; header keamanan lain tetap aktif |
 
 ---
 
