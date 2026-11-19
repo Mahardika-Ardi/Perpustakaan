@@ -148,5 +148,6 @@ Dipakai untuk memastikan aturan akses (`@Roles`) tidak hilang saat refactor.
 | Butuh DB? | ❌ tidak | ✅ ya (PostgreSQL menyala) |
 | Kecepatan | milidetik | detik |
 
-**Status:** e2e penuh (register → login → pinjam) **menyusul** setelah fase
-`prisma migrate` + seeder — lihat `docs/test-report.md` untuk status terakhir.
+**Status:** ✅ e2e penuh **sudah dijalankan** — 18 test lulus (register → login →
+buku → pinjam → kembalikan → hilang → denda → lunas). Detail & prasyarat di
+`docs/test-report.md` §3.

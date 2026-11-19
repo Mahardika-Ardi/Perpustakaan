@@ -42,11 +42,11 @@ masalah:
 
 **Kriteria keberhasilan:**
 
-- [ ] Seluruh endpoint CRUD berfungsi dan lulus unit test + e2e test.
-- [ ] Denda keterlambatan terhitung otomatis saat pengembalian (`hari × FINE_PER_DAY`).
-- [ ] Denda kehilangan tercatat sebesar nilai buku saat `POST /loans/:id/lost`.
-- [ ] Anggota dengan denda `BELUM_LUNAS` ditolak (`409`) saat meminjam.
-- [ ] Endpoint mutasi hanya dapat diakses oleh role `PETUGAS`.
+- [x] Seluruh endpoint CRUD berfungsi dan lulus unit test + e2e test.
+- [x] Denda keterlambatan terhitung otomatis saat pengembalian (`hari × FINE_PER_DAY`).
+- [x] Denda kehilangan tercatat sebesar nilai buku saat `POST /loans/:id/lost`.
+- [x] Anggota dengan denda `BELUM_LUNAS` ditolak (`409`) saat meminjam.
+- [x] Endpoint mutasi hanya dapat diakses oleh role `PETUGAS`.
 
 ## 4. Pengguna (Aktor) & Hak Akses
 

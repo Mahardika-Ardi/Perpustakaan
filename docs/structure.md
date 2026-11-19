@@ -13,7 +13,7 @@ simple-crud/
 │   ├── erd.md                      Struktur database & relasi
 │   ├── structure.md                Dokumen ini
 │   ├── testing.md                  Panduan testing: pola, resep, aturan
-│   └── test-report.md              Laporan hasil run: 70/70 + coverage
+│   └── test-report.md              Laporan hasil run: 142 unit + 18 e2e + coverage
 │
 ├── src/                         	 Sumber kode aplikasi
 │   ├── main.ts                      Bootstrap: helmet, port, inisialisasi app

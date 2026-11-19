@@ -12,7 +12,7 @@ implementasi simple CRUD dengan dokumentasi lengkap.
 | [ERD](./docs/erd.md)                    | Struktur database, relasi, aturan bisnis             |
 | [Struktur project](./docs/structure.md) | Tanggung jawab folder/file & aturan SOC              |
 | [Panduan testing](./docs/testing.md)    | Cara menulis, menjalankan, & konvensi unit test      |
-| [Laporan testing](./docs/test-report.md)| Hasil run terakhir: 70/70 lulus + coverage           |
+| [Laporan testing](./docs/test-report.md)| Hasil run terakhir: 142 unit + 18 e2e lulus + coverage |
 
 ## Fitur (Phase 1)
 
