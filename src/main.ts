@@ -9,7 +9,6 @@ async function bootstrap() {
 
   app.use(helmet());
 
-  // Validasi & strip payload tak dikenal (class-validator) — lihat docs/structure.md
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
