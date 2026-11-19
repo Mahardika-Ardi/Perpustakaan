@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { FinesService } from './fines.service.js';
 import { PrismaService } from '../common/prisma/prisma.service.js';
 
@@ -131,12 +131,13 @@ describe('FinesService', () => {
       await expect(service.pay('id-salah')).rejects.toThrow(NotFoundException);
     });
 
-    it('melempar error bila denda sudah LUNAS', async () => {
+    it('melempar ConflictException (409) bila denda sudah LUNAS', async () => {
       prismaMock.fine.findFirst.mockResolvedValue({
         ...createdFine,
         status: 'LUNAS',
       });
 
+      await expect(service.pay(fineId)).rejects.toThrow(ConflictException);
       await expect(service.pay(fineId)).rejects.toThrow(
         'Denda sudah dilunasi sebelumnya',
       );

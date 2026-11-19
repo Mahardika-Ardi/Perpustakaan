@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service.js';
 
 /**
@@ -65,7 +69,7 @@ export class FinesService {
     }
 
     if (fine.status === 'LUNAS') {
-      throw new Error('Denda sudah dilunasi sebelumnya');
+      throw new ConflictException('Denda sudah dilunasi sebelumnya');
     }
 
     return await this.prisma.fine.update({
