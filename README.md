@@ -10,9 +10,12 @@ implementasi simple CRUD dengan dokumentasi lengkap.
 | -------------------------------------- | ---------------------------------------------------- |
 | [PRD](./docs/prd.md)                    | Kebutuhan produk: masalah, tujuan, fitur + alasannya |
 | [ERD](./docs/erd.md)                    | Struktur database, relasi, aturan bisnis             |
+| [Dokumentasi API](./docs/api.md)        | Semua 22 endpoint: contoh request & response asli    |
 | [Struktur project](./docs/structure.md) | Tanggung jawab folder/file & aturan SOC              |
 | [Panduan testing](./docs/testing.md)    | Cara menulis, menjalankan, & konvensi unit test      |
 | [Laporan testing](./docs/test-report.md)| Hasil run terakhir: 142 unit + 18 e2e lulus + coverage |
+
+Docs interaktif (Swagger UI) tersedia saat server berjalan: `http://localhost:3000/docs`.
 
 ## Fitur (Phase 1)
 
@@ -21,15 +24,16 @@ implementasi simple CRUD dengan dokumentasi lengkap.
 - Peminjaman, pengembalian, dan penandaan kehilangan buku
 - Denda keterlambatan (`hari × FINE_PER_DAY`) & kehilangan (nilai buku)
 - Blokir pinjam baru selama denda belum lunas; pelunasan manual oleh petugas
-- 🔜 Dokumentasi API (Swagger) — menyusul setelah fitur jadi
+- ✅ Dokumentasi API lengkap — Markdown ([docs/api.md](./docs/api.md)) + Swagger (`/docs`)
 
-> **Status:** dokumentasi lengkap (PRD + ERD + struktur) sudah selesai; implementasi
-> fitur berjalan tahap demi tahap mengikuti urutan di PRD.
+> **Status:** phase 1 selesai — fitur, dokumentasi (PRD + ERD + API), dan test
+> (142 unit + 18 e2e) sudah lengkap.
 
 ## Tech Stack
 
-- **[NestJS](https://nestjs.com/)** 12 + TypeScript — framework backend
+- **[NestJS](https://nestjs.com)** 12 + TypeScript — framework backend
 - **[Prisma](https://www.prisma.io/)** 7 + PostgreSQL — ORM & database
+- **@nestjs/swagger** — dokumentasi API interaktif (Swagger UI di `/docs`)
 - **Vitest** + Supertest — unit test & e2e test
 - **Helmet**, **class-validator**, **oxlint**, **Prettier**
 
@@ -56,7 +60,8 @@ npx prisma migrate dev
 npm run start:dev
 ```
 
-Aplikasi berjalan di `http://localhost:3000`.
+Aplikasi berjalan di `http://localhost:3000` (atau sesuai `PORT` di `.env`).
+Swagger UI: `http://localhost:3000/docs`.
 
 ## Perintah
 
@@ -85,7 +90,7 @@ src/
 └── fines/           # denda & pelunasan
 prisma/              # schema.prisma — sumber kebenaran database
 test/                # test e2e
-docs/                # prd, erd, structure, testing, test-report
+docs/                # prd, erd, api, structure, testing, test-report
 ```
 
 Penjelasan lengkap tiap folder & aturan separation of concerns ada di
@@ -97,14 +102,14 @@ Penjelasan lengkap tiap folder & aturan separation of concerns ada di
 /auth        POST /register, POST /login, GET /me
 /books       GET, POST, GET/:id, PATCH/:id, DELETE/:id
 /members     GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/loans       GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/loans       POST /:id/return, POST /:id/lost
+/loans       GET, POST, GET/:id, DELETE/:id
+/loans       PATCH /:id/return, PATCH /:id/lost
 /fines       GET, GET/:id, PATCH /:id/pay
 ```
 
-Detail payload, aturan bisnis (blokir 409, perhitungan denda), dan hak akses per role
-ada di [docs/prd.md](./docs/prd.md). Dokumentasi API interaktif (Swagger) menyusul
-setelah implementasi fitur selesai.
+Detail payload, contoh request/response asli, aturan bisnis (blokir 409, perhitungan
+denda), dan hak akses per role ada di **[docs/api.md](./docs/api.md)** — atau coba
+langsung di Swagger UI: `http://localhost:3000/docs`.
 
 ## Lisensi
 

@@ -11,12 +11,13 @@ simple-crud/
 ├── docs/                        	Dokumentasi proyek
 │   ├── prd.md                      Kebutuhan produk: fitur + alasannya
 │   ├── erd.md                      Struktur database & relasi
+│   ├── api.md                      Dokumentasi API: semua endpoint + contoh asli
 │   ├── structure.md                Dokumen ini
 │   ├── testing.md                  Panduan testing: pola, resep, aturan
 │   └── test-report.md              Laporan hasil run: 142 unit + 18 e2e + coverage
 │
 ├── src/                         	 Sumber kode aplikasi
-│   ├── main.ts                      Bootstrap: helmet, port, inisialisasi app
+│   ├── main.ts                      Bootstrap: helmet, port, Swagger (/docs), inisialisasi app
 │   ├── app.module.ts                Root module — mendaftarkan semua module fitur
 │   ├── app.controller.ts            Endpoint GET / (hello) — contoh bawaan
 │   ├── app.service.ts               Logika endpoint hello
@@ -24,9 +25,9 @@ simple-crud/
 │   ├── common/                      Lintas modul: prisma/, guards/, decorators/, types/
 │   ├── auth/                        Register/login/me, JWT (JwtModule global), DTO auth
 │   ├── books/                       CRUD katalog buku
-│   ├── members/                     🔨 CRUD anggota (identitas peminjam)
-│   ├── loans/                       🔨 Peminjaman, pengembalian, kehilangan
-│   └── fines/                       🔨 Daftar denda & pelunasan
+│   ├── members/                     CRUD anggota (identitas peminjam)
+│   ├── loans/                       Peminjaman, pengembalian, kehilangan
+│   └── fines/                       Daftar denda & pelunasan
 │
 ├── prisma/                      	 Konfigurasi database
 │   ├── schema.prisma                Model & relasi — sumber kebenaran database
@@ -44,8 +45,6 @@ simple-crud/
 └── .prettierrc                  Konfigurasi formatter
 ```
 
-> 🔨 = folder yang belum dibuat (menyusul di fase berikutnya phase 1).
-
 ## Tanggung Jawab per Folder
 
 | Folder / File              | Tanggung jawab                                           | Boleh                                | Tidak boleh                             |
@@ -58,7 +57,7 @@ simple-crud/
 | `src/generated/`         | Hasil generate Prisma client                             | Dipakai service                      | **Diedit manual**                 |
 | `prisma/schema.prisma`   | Definisi model, enum, relasi                             | Diubah + `migrate`                 | Dipanggil dari controller               |
 | `test/`                  | Test e2e — uji alur HTTP utuh                           | Import `AppModule`                 | Test logika detail (itu unit test)      |
-| `docs/`                  | PRD, ERD, struktur, panduan & laporan testing            | —                                   | —                                      |
+| `docs/`                  | PRD, ERD, dokumentasi API, struktur, panduan & laporan testing | —                                   | —                                      |
 | `.env`                   | `DATABASE_URL`, `FINE_PER_DAY`, `PORT`             | Diisi lokal                          | Di-commit ke git                        |
 
 ## Aturan SOC
