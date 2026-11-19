@@ -10,7 +10,7 @@ async function bootstrap() {
 
   // contentSecurityPolicy dimatikan agar Swagger UI (/docs) bisa memuat
   // aset & skripnya sendiri; proteksi header lain (helmet) tetap aktif.
-  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(helmet({ contentSecurityPolicy: false, xPoweredBy: false }));
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -33,6 +33,9 @@ async function bootstrap() {
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, swaggerDocument);
 
-  await app.listen(process.env.PORT ?? 3000);
+  const PORT = process.env.PORT;
+  await app.listen(PORT ?? 3000);
+
+  console.log(`${new Date()} Server Running At localhost:${PORT}`);
 }
 await bootstrap();
