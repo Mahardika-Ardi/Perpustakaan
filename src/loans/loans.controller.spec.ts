@@ -19,6 +19,7 @@ describe('LoansController', () => {
     returnLoan: vi.fn(),
     markLost: vi.fn(),
     remove: vi.fn(),
+    restore: vi.fn(),
   };
 
   // @UseGuards(JwtAuthGuard) membuat Nest menginstansiasi guard —
@@ -48,7 +49,14 @@ describe('LoansController', () => {
     serviceMock.findAll.mockResolvedValue(data);
 
     await expect(controller.findAll()).resolves.toEqual(data);
-    expect(serviceMock.findAll).toHaveBeenCalledTimes(1);
+    expect(serviceMock.findAll).toHaveBeenCalledWith(false);
+  });
+
+  it('findAll meneruskan deleted=true ke service (daftar sampah)', async () => {
+    serviceMock.findAll.mockResolvedValue([]);
+
+    await controller.findAll('true');
+    expect(serviceMock.findAll).toHaveBeenCalledWith(true);
   });
 
   it('findOne meneruskan id ke service', async () => {
@@ -92,6 +100,14 @@ describe('LoansController', () => {
     expect(serviceMock.remove).toHaveBeenCalledWith(loanId);
   });
 
+  it('restore meneruskan id ke service', async () => {
+    const restored = { id: loanId, deletedAt: null };
+    serviceMock.restore.mockResolvedValue(restored);
+
+    await expect(controller.restore(loanId)).resolves.toEqual(restored);
+    expect(serviceMock.restore).toHaveBeenCalledWith(loanId);
+  });
+
   describe('metadata @Roles (aturan akses)', () => {
     const reflector = new Reflector();
 
@@ -107,6 +123,9 @@ describe('LoansController', () => {
       ).toEqual(['PETUGAS']);
       expect(
         reflector.get(ROLES_KEY, LoansController.prototype.remove),
+      ).toEqual(['PETUGAS']);
+      expect(
+        reflector.get(ROLES_KEY, LoansController.prototype.restore),
       ).toEqual(['PETUGAS']);
     });
 

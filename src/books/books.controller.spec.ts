@@ -14,6 +14,7 @@ describe('BooksController', () => {
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
+    restore: vi.fn(),
   };
 
   // @UseGuards(JwtAuthGuard) di controller membuat Nest menginstansiasi
@@ -43,7 +44,14 @@ describe('BooksController', () => {
     serviceMock.findAll.mockResolvedValue(data);
 
     await expect(controller.findAll()).resolves.toEqual(data);
-    expect(serviceMock.findAll).toHaveBeenCalledTimes(1);
+    expect(serviceMock.findAll).toHaveBeenCalledWith(false);
+  });
+
+  it('findAll meneruskan deleted=true ke service (daftar sampah)', async () => {
+    serviceMock.findAll.mockResolvedValue([]);
+
+    await controller.findAll('true');
+    expect(serviceMock.findAll).toHaveBeenCalledWith(true);
   });
 
   it('findOne meneruskan id ke service', async () => {
@@ -81,6 +89,14 @@ describe('BooksController', () => {
     expect(serviceMock.remove).toHaveBeenCalledWith('buku-1');
   });
 
+  it('restore meneruskan id ke service', async () => {
+    const restored = { id: 'buku-1', deletedAt: null };
+    serviceMock.restore.mockResolvedValue(restored);
+
+    await expect(controller.restore('buku-1')).resolves.toEqual(restored);
+    expect(serviceMock.restore).toHaveBeenCalledWith('buku-1');
+  });
+
   describe('metadata @Roles (aturan akses)', () => {
     const reflector = new Reflector();
 
@@ -93,6 +109,9 @@ describe('BooksController', () => {
       ).toEqual(['PETUGAS']);
       expect(
         reflector.get(ROLES_KEY, BooksController.prototype.remove),
+      ).toEqual(['PETUGAS']);
+      expect(
+        reflector.get(ROLES_KEY, BooksController.prototype.restore),
       ).toEqual(['PETUGAS']);
     });
 
