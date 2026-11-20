@@ -82,6 +82,22 @@ describe('LoansService', () => {
         },
       });
     });
+
+    it('mengembalikan hanya peminjaman terhapus bila deleted=true', async () => {
+      prismaMock.loan.findMany = vi.fn().mockResolvedValue([]);
+
+      await service.findAll(true);
+
+      expect(prismaMock.loan.findMany).toHaveBeenCalledWith({
+        where: { deletedAt: { not: null } },
+        orderBy: { borrowedAt: 'desc' },
+        include: {
+          member: { select: { id: true, code: true, name: true } },
+          book: { select: { id: true, title: true, isbn: true } },
+          fine: { select: { id: true, amount: true, status: true } },
+        },
+      });
+    });
   });
 
   describe('findOne', () => {
@@ -347,6 +363,45 @@ describe('LoansService', () => {
       await expect(service.remove('id-salah')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('restore', () => {
+    const deletedLoan = {
+      ...createdLoan,
+      deletedAt: new Date('2026-02-01T00:00:00.000Z'),
+    };
+
+    it('mengosongkan deletedAt sehingga peminjaman muncul kembali', async () => {
+      prismaMock.loan.findFirst.mockResolvedValue(deletedLoan);
+      prismaMock.loan.update.mockResolvedValue({
+        ...deletedLoan,
+        deletedAt: null,
+      });
+
+      const result = await service.restore(loanId);
+
+      expect(result.deletedAt).toBeNull();
+      expect(prismaMock.loan.update).toHaveBeenCalledWith({
+        where: { id: loanId },
+        data: { deletedAt: null },
+      });
+    });
+
+    it('melempar NotFoundException bila peminjaman tidak ada', async () => {
+      prismaMock.loan.findFirst.mockResolvedValue(null);
+
+      await expect(service.restore('id-salah')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prismaMock.loan.update).not.toHaveBeenCalled();
+    });
+
+    it('melempar ConflictException (409) bila tidak terhapus', async () => {
+      prismaMock.loan.findFirst.mockResolvedValue(createdLoan);
+
+      await expect(service.restore(loanId)).rejects.toThrow(ConflictException);
+      expect(prismaMock.loan.update).not.toHaveBeenCalled();
     });
   });
 });

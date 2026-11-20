@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '../generated/prisma/client.js';
@@ -16,6 +17,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -42,14 +44,21 @@ export class LoansController {
   constructor(private readonly loansService: LoansService) {}
 
   @Get()
+  @ApiQuery({
+    name: 'deleted',
+    required: false,
+    description:
+      'true → tampilkan hanya peminjaman terhapus (daftar sampah untuk restore). Default: hanya yang aktif.',
+    enum: ['true'],
+  })
   @ApiOperation({
     summary: 'Daftar peminjaman (wajib login)',
     description: 'Menyertakan info anggota dan buku untuk tiap peminjaman.',
   })
   @ApiResponse({ status: 200, description: 'Daftar peminjaman' })
   @ApiResponse({ status: 401, description: 'Belum login' })
-  findAll() {
-    return this.loansService.findAll();
+  findAll(@Query('deleted') deleted?: string) {
+    return this.loansService.findAll(deleted === 'true');
   }
 
   @Get(':id')
@@ -160,5 +169,26 @@ export class LoansController {
   @ApiResponse({ status: 404, description: 'Peminjaman tidak ditemukan' })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.loansService.remove(id);
+  }
+
+  @Patch(':id/restore')
+  @Roles(Role.PETUGAS)
+  @HttpCode(HttpStatus.OK)
+  @ApiParam({ name: 'id', format: 'uuid', description: 'ID peminjaman (UUID)' })
+  @ApiOperation({
+    summary: 'Restore peminjaman terhapus (khusus PETUGAS)',
+    description:
+      'Membatalkan soft delete — deletedAt dikosongkan, riwayat muncul kembali.',
+  })
+  @ApiResponse({ status: 200, description: 'Peminjaman aktif kembali' })
+  @ApiResponse({ status: 400, description: 'Bukan format UUID' })
+  @ApiResponse({ status: 403, description: 'Bukan role PETUGAS' })
+  @ApiResponse({ status: 404, description: 'Peminjaman tidak ditemukan' })
+  @ApiResponse({
+    status: 409,
+    description: 'Peminjaman tidak dalam status terhapus',
+  })
+  restore(@Param('id', ParseUUIDPipe) id: string) {
+    return this.loansService.restore(id);
   }
 }

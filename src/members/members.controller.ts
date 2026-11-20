@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '../generated/prisma/client.js';
@@ -16,6 +17,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -42,14 +44,21 @@ export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
   @Get()
+  @ApiQuery({
+    name: 'deleted',
+    required: false,
+    description:
+      'true → tampilkan hanya anggota terhapus (daftar sampah untuk restore). Default: hanya anggota aktif.',
+    enum: ['true'],
+  })
   @ApiOperation({
     summary: 'Daftar anggota (wajib login)',
     description: 'Termasuk data user terkait bila anggota punya akun login.',
   })
   @ApiResponse({ status: 200, description: 'Daftar anggota' })
   @ApiResponse({ status: 401, description: 'Belum login' })
-  findAll() {
-    return this.membersService.findAll();
+  findAll(@Query('deleted') deleted?: string) {
+    return this.membersService.findAll(deleted === 'true');
   }
 
   @Get(':id')
@@ -108,5 +117,26 @@ export class MembersController {
   @ApiResponse({ status: 404, description: 'Anggota tidak ditemukan' })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.membersService.remove(id);
+  }
+
+  @Patch(':id/restore')
+  @Roles(Role.PETUGAS)
+  @HttpCode(HttpStatus.OK)
+  @ApiParam({ name: 'id', format: 'uuid', description: 'ID anggota (UUID)' })
+  @ApiOperation({
+    summary: 'Restore anggota terhapus (khusus PETUGAS)',
+    description:
+      'Membatalkan soft delete — deletedAt dikosongkan dan akun login (User) ikut diaktifkan kembali.',
+  })
+  @ApiResponse({ status: 200, description: 'Anggota aktif kembali' })
+  @ApiResponse({ status: 400, description: 'Bukan format UUID' })
+  @ApiResponse({ status: 403, description: 'Bukan role PETUGAS' })
+  @ApiResponse({ status: 404, description: 'Anggota tidak ditemukan' })
+  @ApiResponse({
+    status: 409,
+    description: 'Anggota tidak dalam status terhapus',
+  })
+  restore(@Param('id', ParseUUIDPipe) id: string) {
+    return this.membersService.restore(id);
   }
 }

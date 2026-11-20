@@ -16,6 +16,8 @@ import { setupApp } from './../src/setup-app.js';
 //  6. Pinjam lagi, tandai hilang → Fine HILANG dibuat
 //  7. Pinjam lagi → DITOLAK 409 (fine belum lunas)
 //  8. Lunaskan fine (khusus PETUGAS) → blokir terbuka
+//  9. Restore: hapus → daftar sampah (?deleted=true) → restore → 409
+// 10. Cascade akun: hapus anggota → login 401 → restore → login 200
 //
 //  Catatan:
 //  - Semua request memakai prefix versioning API (const API di bawah).
@@ -291,6 +293,163 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ loanId: res.body.id })
         .expect(200);
+    });
+  });
+
+  describe('Restore (soft delete dibatalkan)', () => {
+    const RESTORE_EMAIL = `restore${RUN_ID}@kampus.ac.id`;
+    let restoreMemberId: string;
+    let restoreBookId: string;
+
+    it('POST /books — buat buku khusus skenario restore', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${API}/books`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .send({
+          title: `Buku Restore ${RUN_ID}`,
+          author: 'Penulis Restore',
+          isbn: `978-RESTORE-${RUN_ID}`,
+          publisher: 'Penerbit Restore',
+          year: 2026,
+          value: 50000,
+          stock: 1,
+        })
+        .expect(201);
+
+      restoreBookId = res.body.id;
+    });
+
+    it('DELETE /books/:id — soft delete buku', async () => {
+      await request(app.getHttpServer())
+        .delete(`${API}/books/${restoreBookId}`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(204);
+    });
+
+    it('GET /books — buku terhapus tidak muncul di daftar aktif', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${API}/books`)
+        .set('Authorization', `Bearer ${accessTokenAnggota}`)
+        .expect(200);
+
+      expect(res.body.some((b: any) => b.id === restoreBookId)).toBe(false);
+    });
+
+    it('GET /books?deleted=true — buku terhapus muncul di daftar sampah', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${API}/books?deleted=true`)
+        .set('Authorization', `Bearer ${accessTokenAnggota}`)
+        .expect(200);
+
+      const found = res.body.find((b: any) => b.id === restoreBookId);
+      expect(found).toBeDefined();
+      expect(found.deletedAt).not.toBeNull();
+    });
+
+    it('PATCH /books/:id/restore — ditolak bila bukan PETUGAS (403)', async () => {
+      await request(app.getHttpServer())
+        .patch(`${API}/books/${restoreBookId}/restore`)
+        .set('Authorization', `Bearer ${accessTokenAnggota}`)
+        .expect(403);
+    });
+
+    it('PATCH /books/:id/restore — buku aktif kembali', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${API}/books/${restoreBookId}/restore`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(200);
+
+      expect(res.body.deletedAt).toBeNull();
+    });
+
+    it('GET /books — buku muncul lagi di daftar aktif', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${API}/books`)
+        .set('Authorization', `Bearer ${accessTokenAnggota}`)
+        .expect(200);
+
+      expect(res.body.some((b: any) => b.id === restoreBookId)).toBe(true);
+    });
+
+    it('PATCH /books/:id/restore kedua kali → 409 (tidak terhapus)', async () => {
+      await request(app.getHttpServer())
+        .patch(`${API}/books/${restoreBookId}/restore`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(409);
+    });
+
+    it('POST /auth/register — daftar akun untuk skenario restore', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${API}/auth/register`)
+        .send({
+          email: RESTORE_EMAIL,
+          username: `restore${RUN_ID}`,
+          password: PASSWORD,
+          name: 'User Restore',
+          phone: '089876543210',
+          nim: `2026R${RUN_ID}`,
+          address: 'Jalan Restore 1',
+        })
+        .expect(201);
+
+      restoreMemberId = res.body.member.id;
+      expect(res.body.user.email).toBe(RESTORE_EMAIL);
+    });
+
+    it('POST /auth/login — akun aktif bisa login sebelum dihapus', async () => {
+      await request(app.getHttpServer())
+        .post(`${API}/auth/login`)
+        .send({ email: RESTORE_EMAIL, password: PASSWORD })
+        .expect(200);
+    });
+
+    it('DELETE /members/:id — hapus anggota, akun login ikut nonaktif (cascade)', async () => {
+      await request(app.getHttpServer())
+        .delete(`${API}/members/${restoreMemberId}`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(204);
+    });
+
+    it('POST /auth/login — akun terhapus ditolak 401 (cascade ke User)', async () => {
+      await request(app.getHttpServer())
+        .post(`${API}/auth/login`)
+        .send({ email: RESTORE_EMAIL, password: PASSWORD })
+        .expect(401);
+    });
+
+    it('GET /members?deleted=true — anggota terhapus muncul di daftar sampah', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`${API}/members?deleted=true`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(200);
+
+      expect(res.body.some((m: any) => m.id === restoreMemberId)).toBe(true);
+    });
+
+    it('PATCH /members/:id/restore — anggota + akun aktif kembali', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`${API}/members/${restoreMemberId}/restore`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(200);
+
+      expect(res.body.deletedAt).toBeNull();
+      expect(res.body.user).toBeDefined();
+    });
+
+    it('POST /auth/login — akun bisa login lagi setelah restore', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`${API}/auth/login`)
+        .send({ email: RESTORE_EMAIL, password: PASSWORD })
+        .expect(200);
+
+      expect(res.body.user.email).toBe(RESTORE_EMAIL);
+    });
+
+    it('PATCH /members/:id/restore kedua kali → 409 (tidak terhapus)', async () => {
+      await request(app.getHttpServer())
+        .patch(`${API}/members/${restoreMemberId}/restore`)
+        .set('Authorization', `Bearer ${accessTokenPetugas}`)
+        .expect(409);
     });
   });
 });

@@ -25,10 +25,15 @@ export class LoansService {
   /** Denda per hari terlambat (bisa di-override via env). */
   private readonly finePerDay = Number(process.env.FINE_PER_DAY ?? 5000);
 
-  /** Daftar pinjam aktif & riwayat (soft-deleted disembunyikan). */
-  findAll() {
+  /**
+   * Daftar peminjaman & riwayat.
+   *
+   * @param deleted false (default) → hanya yang aktif;
+   *                true → hanya yang terhapus (daftar sampah, untuk restore).
+   */
+  findAll(deleted = false) {
     return this.prisma.loan.findMany({
-      where: { deletedAt: null },
+      where: deleted ? { deletedAt: { not: null } } : { deletedAt: null },
       orderBy: { borrowedAt: 'desc' },
       include: {
         member: { select: { id: true, code: true, name: true } },
@@ -269,6 +274,29 @@ export class LoansService {
     return this.prisma.loan.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+  }
+
+  /**
+   * Restore peminjaman yang di-soft-delete (kebalikan remove) — mengosongkan
+   * deletedAt agar riwayat muncul kembali.
+   */
+  async restore(id: string) {
+    const loan = await this.prisma.loan.findFirst({ where: { id } });
+
+    if (!loan) {
+      throw new NotFoundException(
+        `Peminjaman dengan id "${id}" tidak ditemukan`,
+      );
+    }
+
+    if (loan.deletedAt === null) {
+      throw new ConflictException('Peminjaman tidak dalam status terhapus');
+    }
+
+    return this.prisma.loan.update({
+      where: { id },
+      data: { deletedAt: null },
     });
   }
 }

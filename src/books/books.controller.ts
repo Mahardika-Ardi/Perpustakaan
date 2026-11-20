@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '../generated/prisma/client.js';
@@ -16,6 +17,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -43,14 +45,21 @@ export class BooksController {
   constructor(private readonly booksService: BooksService) {}
 
   @Get()
+  @ApiQuery({
+    name: 'deleted',
+    required: false,
+    description:
+      'true → tampilkan hanya buku terhapus (daftar sampah untuk restore). Default: hanya buku aktif.',
+    enum: ['true'],
+  })
   @ApiOperation({
     summary: 'Daftar buku (wajib login)',
     description: 'Mengembalikan semua buku yang belum di-soft-delete.',
   })
   @ApiResponse({ status: 200, description: 'Daftar buku' })
   @ApiResponse({ status: 401, description: 'Belum login' })
-  findAll() {
-    return this.booksService.findAll();
+  findAll(@Query('deleted') deleted?: string) {
+    return this.booksService.findAll(deleted === 'true');
   }
 
   @Get(':id')
@@ -107,5 +116,23 @@ export class BooksController {
   @ApiResponse({ status: 404, description: 'Buku tidak ditemukan' })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.booksService.remove(id);
+  }
+
+  @Patch(':id/restore')
+  @Roles(Role.PETUGAS)
+  @HttpCode(HttpStatus.OK)
+  @ApiParam({ name: 'id', format: 'uuid', description: 'ID buku (UUID)' })
+  @ApiOperation({
+    summary: 'Restore buku terhapus (khusus PETUGAS)',
+    description:
+      'Membatalkan soft delete — deletedAt dikosongkan, buku muncul kembali di katalog.',
+  })
+  @ApiResponse({ status: 200, description: 'Buku aktif kembali' })
+  @ApiResponse({ status: 400, description: 'Bukan format UUID' })
+  @ApiResponse({ status: 403, description: 'Bukan role PETUGAS' })
+  @ApiResponse({ status: 404, description: 'Buku tidak ditemukan' })
+  @ApiResponse({ status: 409, description: 'Buku tidak dalam status terhapus' })
+  restore(@Param('id', ParseUUIDPipe) id: string) {
+    return this.booksService.restore(id);
   }
 }

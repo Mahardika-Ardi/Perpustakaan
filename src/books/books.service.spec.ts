@@ -64,6 +64,17 @@ describe('BooksService', () => {
       });
       expect(result).toEqual([book]);
     });
+
+    it('mengembalikan hanya buku terhapus bila deleted=true', async () => {
+      prismaMock.book.findMany.mockResolvedValue([]);
+
+      await service.findAll(true);
+
+      expect(prismaMock.book.findMany).toHaveBeenCalledWith({
+        where: { deletedAt: { not: null } },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
   });
 
   describe('findOne', () => {
@@ -180,6 +191,45 @@ describe('BooksService', () => {
       await expect(service.remove('id-tidak-ada')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('restore', () => {
+    const deletedBook = {
+      ...book,
+      deletedAt: new Date('2026-02-01T00:00:00.000Z'),
+    };
+
+    it('mengosongkan deletedAt sehingga buku aktif kembali', async () => {
+      prismaMock.book.findFirst.mockResolvedValue(deletedBook);
+      prismaMock.book.update.mockResolvedValue({
+        ...deletedBook,
+        deletedAt: null,
+      });
+
+      const result = await service.restore(book.id);
+
+      expect(result.deletedAt).toBeNull();
+      expect(prismaMock.book.update).toHaveBeenCalledWith({
+        where: { id: book.id },
+        data: { deletedAt: null },
+      });
+    });
+
+    it('melempar NotFoundException bila buku tidak ada', async () => {
+      prismaMock.book.findFirst.mockResolvedValue(null);
+
+      await expect(service.restore('id-tidak-ada')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prismaMock.book.update).not.toHaveBeenCalled();
+    });
+
+    it('melempar ConflictException (409) bila buku tidak terhapus', async () => {
+      prismaMock.book.findFirst.mockResolvedValue(book);
+
+      await expect(service.restore(book.id)).rejects.toThrow(ConflictException);
+      expect(prismaMock.book.update).not.toHaveBeenCalled();
     });
   });
 });

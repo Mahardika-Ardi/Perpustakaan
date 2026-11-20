@@ -18,10 +18,15 @@ import { UpdateBookDto } from './dto/update-book.dto.js';
 export class BooksService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Daftar buku aktif (soft-deleted disembunyikan). */
-  findAll() {
+  /**
+   * Daftar buku.
+   *
+   * @param deleted false (default) → hanya buku aktif;
+   *                true → hanya yang terhapus (daftar sampah, untuk restore).
+   */
+  findAll(deleted = false) {
     return this.prisma.book.findMany({
-      where: { deletedAt: null },
+      where: deleted ? { deletedAt: { not: null } } : { deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -67,6 +72,27 @@ export class BooksService {
     return this.prisma.book.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+  }
+
+  /**
+   * Restore buku yang di-soft-delete (kebalikan remove) — mengosongkan
+   * deletedAt agar buku muncul kembali di katalog.
+   */
+  async restore(id: string) {
+    const book = await this.prisma.book.findFirst({ where: { id } });
+
+    if (!book) {
+      throw new NotFoundException(`Buku dengan id "${id}" tidak ditemukan`);
+    }
+
+    if (book.deletedAt === null) {
+      throw new ConflictException('Buku tidak dalam status terhapus');
+    }
+
+    return this.prisma.book.update({
+      where: { id },
+      data: { deletedAt: null },
     });
   }
 
