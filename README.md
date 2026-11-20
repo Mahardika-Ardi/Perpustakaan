@@ -10,10 +10,10 @@ implementasi simple CRUD dengan dokumentasi lengkap.
 | -------------------------------------- | ---------------------------------------------------- |
 | [PRD](./docs/prd.md)                    | Kebutuhan produk: masalah, tujuan, fitur + alasannya |
 | [ERD](./docs/erd.md)                    | Struktur database, relasi, aturan bisnis             |
-| [Dokumentasi API](./docs/api.md)        | Semua 22 endpoint: contoh request & response asli    |
+| [Dokumentasi API](./docs/api.md)        | Semua 25 endpoint: contoh request & response asli    |
 | [Struktur project](./docs/structure.md) | Tanggung jawab folder/file & aturan SOC              |
 | [Panduan testing](./docs/testing.md)    | Cara menulis, menjalankan, & konvensi unit test      |
-| [Laporan testing](./docs/test-report.md)| Hasil run terakhir: 142 unit + 18 e2e lulus + coverage |
+| [Laporan testing](./docs/test-report.md)| Hasil run terakhir: 161 unit + 36 e2e lulus + coverage |
 
 Docs interaktif (Swagger UI) tersedia saat server berjalan: `http://localhost:3000/docs`.
 
@@ -24,10 +24,13 @@ Docs interaktif (Swagger UI) tersedia saat server berjalan: `http://localhost:30
 - Peminjaman, pengembalian, dan penandaan kehilangan buku
 - Denda keterlambatan (`hari × FINE_PER_DAY`) & kehilangan (nilai buku)
 - Blokir pinjam baru selama denda belum lunas; pelunasan manual oleh petugas
+- **Versioning URI `/api/v1`** + versi aplikasi SemVer (info di `GET /` & Swagger)
+- **Restore data terhapus** — `PATCH …/:id/restore` + daftar sampah `?deleted=true`;
+  hapus anggota ikut menonaktifkan akun login (restore mengaktifkan keduanya)
 - ✅ Dokumentasi API lengkap — Markdown ([docs/api.md](./docs/api.md)) + Swagger (`/docs`)
 
 > **Status:** phase 1 selesai — fitur, dokumentasi (PRD + ERD + API), dan test
-> (142 unit + 18 e2e) sudah lengkap.
+> (161 unit + 36 e2e) sudah lengkap.
 
 ## Tech Stack
 
@@ -61,6 +64,7 @@ npm run start:dev
 ```
 
 Aplikasi berjalan di `http://localhost:3000` (atau sesuai `PORT` di `.env`).
+Base URL API: `http://localhost:3000/api/v1` · health check: `GET /` ·
 Swagger UI: `http://localhost:3000/docs`.
 
 ## Perintah
@@ -80,13 +84,14 @@ Swagger UI: `http://localhost:3000/docs`.
 
 ```
 src/
-├── main.ts          # bootstrap (helmet, port)
+├── main.ts          # bootstrap (helmet, swagger, setupApp)
+├── setup-app.ts     # prefix /api/v1 + versioning + validasi global
 ├── app.module.ts    # root module
 ├── common/          # guard, decorator, filter lintas modul
 ├── auth/            # register/login, JWT
-├── books/           # CRUD buku
-├── members/         # CRUD anggota
-├── loans/           # pinjam, return, lost
+├── books/           # CRUD buku + restore
+├── members/         # CRUD anggota + restore (cascade akun login)
+├── loans/           # pinjam, return, lost + restore
 └── fines/           # denda & pelunasan
 prisma/              # schema.prisma — sumber kebenaran database
 test/                # test e2e
@@ -98,12 +103,15 @@ Penjelasan lengkap tiap folder & aturan separation of concerns ada di
 
 ## Endpoint (Ringkas)
 
+Semua path di bawah prefix **`/api/v1`** (kecuali `GET /` — cek server & info versi):
+
 ```
+GET  /               info server + versi (name, version, apiVersion, status)
 /auth        POST /register, POST /login, GET /me
-/books       GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/members     GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/loans       GET, POST, GET/:id, DELETE/:id
-/loans       PATCH /:id/return, PATCH /:id/lost
+/books       GET (?deleted=true), POST, GET/:id, PATCH/:id, DELETE/:id, PATCH /:id/restore
+/members     GET (?deleted=true), POST, GET/:id, PATCH/:id, DELETE/:id, PATCH /:id/restore
+/loans       GET (?deleted=true), POST, GET/:id, DELETE/:id
+/loans       PATCH /:id/return, PATCH /:id/lost, PATCH /:id/restore
 /fines       GET, GET/:id, PATCH /:id/pay
 ```
 

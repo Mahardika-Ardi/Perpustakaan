@@ -2,6 +2,9 @@
 
 > **ERD (Entity Relationship Diagram)**: cetak biru struktur database yang memetakan tabel, kolom, dan relasinya.
 > Dokumen ini menjadi acuan sebelum `prisma/schema.prisma` ditulis.
+>
+> **Catatan:** path endpoint yang disebut di bawah bersifat konseptual dan relatif terhadap
+> prefix **`/api/v1`** (kecuali `GET /`) — lihat [`docs/api.md`](./api.md) untuk URL lengkap.
 
 ## Diagram
 
@@ -176,14 +179,17 @@ tanpa menebak-nebak username, dan tanpa risiko data ganda yang bisa beda sendiri
 
 1. **Pinjam** — `POST /loans` ditolak (`409`) jika anggota punya `Fine` berstatus
    `BELUM_LUNAS`, atau `Book.stock = 0`. Jika lolos: `stock` dikurangi.
-2. **Pengembalian tepat waktu** — `POST /loans/:id/return` → `status = DIKEMBALIKAN`,
+2. **Pengembalian tepat waktu** — `PATCH /loans/:id/return` → `status = DIKEMBALIKAN`,
    `returnedAt = now`, `stock` dikembalikan. Tidak ada denda.
 3. **Pengembalian telat** — hari keterlambatan = selisih `dueAt` → `returnedAt`
    (dibulatkan ke atas). Otomatis dibuat `Fine{ reason: TERLAMBAT, amount: hari × FINE_PER_DAY }`.
-4. **Kehilangan buku** — `POST /loans/:id/lost` → `status = HILANG`, `stock` **tidak**
+4. **Kehilangan buku** — `PATCH /loans/:id/lost` → `status = HILANG`, `stock` **tidak**
    dikembalikan, dibuat `Fine{ reason: HILANG, amount: Book.value }`.
 5. **Pelunasan** — manual: petugas `PATCH /fines/:id/pay` → `status = LUNAS`,
    `paidAt = now`. Blokir pinjam terbuka otomatis begitu tidak ada denda `BELUM_LUNAS`.
+6. **Soft delete & restore** — hapus hanya mengisi `deletedAt`; `PATCH …/:id/restore`
+   mengosongkannya (`409` bila tidak sedang terhapus). Data terhapus dilihat via
+   `GET …?deleted=true`.
 
 ## Catatan Desain
 
@@ -191,6 +197,12 @@ tanpa menebak-nebak username, dan tanpa risiko data ganda yang bisa beda sendiri
   `FINE_PER_DAY=1000` (rupiah) — ganti tarif tanpa ubah kode atau migrasi.
 - **Soft delete** (`deletedAt`) dipakai di `User`, `Member`, `Book`, `Loan` agar riwayat
   transaksi tidak hilang; `Fine` tidak di-soft-delete karena menyangkut keuangan.
+  Data terhapus tidak permanen — bisa dikembalikan (`PATCH …/:id/restore`) dan terlihat
+  di `GET …?deleted=true`.
+- **Hapus anggota cascade ke `User`** — `DELETE /members/:id` mengisi `deletedAt` anggota
+  **dan** akun login-nya dalam satu transaksi, supaya anggota terhapus tidak bisa login
+  lagi (tidak ada akun "setengah mati"). `PATCH /members/:id/restore` mengaktifkan
+  keduanya. Tanpa ini, kolom `User.deletedAt` tidak akan pernah terisi.
 - Seluruh `id` memakai `uuid()` agar konsisten dengan pola `User` yang sudah ada.
 - 1 pinjaman = 1 buku (keputusan fase ini). Jika nanti butuh pinjam banyak buku sekaligus,
   cukup tambah tabel pivot `LoanItem` antara `LOAN` dan `BOOK`.

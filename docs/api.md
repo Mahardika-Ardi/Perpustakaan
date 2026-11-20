@@ -1,7 +1,7 @@
 # Dokumentasi API — Sistem Perpustakaan
 
 > Dokumen ini berisi **semua endpoint** beserta contoh **request** dan **response asli**
-> yang diverifikasi langsung dari server berjalan (19 November 2026, 40 skenario sukses & error).
+> yang diverifikasi langsung dari server berjalan (20 November 2026, 50+ skenario sukses & error).
 > Versi interaktif juga tersedia di **Swagger UI** saat server hidup: `GET /docs`.
 > Struktur ERD: [`docs/erd.md`](./erd.md) · Aturan bisnis: [`docs/prd.md`](./prd.md)
 
@@ -28,22 +28,43 @@
 
 | Item            | Nilai                                                                                                  |
 | --------------- | ------------------------------------------------------------------------------------------------------ |
-| Base URL        | `http://localhost:<PORT>` (default `3000`; contoh di dokumen ini memakai `4000` sesuai `.env`) |
+| Base URL        | `http://localhost:<PORT>` + prefix **`/api/v1`** (default `3000`; contoh di dokumen ini memakai `4000` sesuai `.env`) → `http://localhost:4000/api/v1` |
 | Format          | JSON (`Content-Type: application/json`)                                                              |
 | Autentikasi     | JWT Bearer — `Authorization: Bearer <accessToken>`                                                  |
 | Docs interaktif | `GET /docs` (Swagger UI) · `GET /docs-json` (spec OpenAPI)                                        |
 | Stack           | NestJS 12 · Prisma 7 · PostgreSQL · argon2id · helmet                                              |
 
-**Jumlah endpoint:** 22 API + 1 health.
+**Jumlah endpoint:** 25 API + 1 health.
 
-| Modul   | Endpoint                                                               | Metode                         |
-| ------- | ---------------------------------------------------------------------- | ------------------------------ |
-| Health  | `/`                                                                  | GET                            |
-| Auth    | `/auth/register`, `/auth/login`, `/auth/me`                      | POST, POST, GET                |
-| Books   | `/books`, `/books/:id`                                             | GET×2, POST, PATCH, DELETE    |
-| Members | `/members`, `/members/:id`                                         | GET×2, POST, PATCH, DELETE    |
-| Loans   | `/loans`, `/loans/:id`, `/loans/:id/return`, `/loans/:id/lost` | GET×2, POST, PATCH×2, DELETE |
-| Fines   | `/fines`, `/fines/:id`, `/fines/:id/pay`                         | GET×2, PATCH                  |
+| Modul   | Endpoint                                                                                       | Metode                          |
+| ------- | ---------------------------------------------------------------------------------------------- | ------------------------------- |
+| Health  | `/` (tanpa prefix — cek server hidup & info versi)                                             | GET                             |
+| Auth    | `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/me`                               | POST, POST, GET                 |
+| Books   | `/api/v1/books`, `/api/v1/books/:id`, `/api/v1/books/:id/restore`                              | GET×2, POST, PATCH×2, DELETE    |
+| Members | `/api/v1/members`, `/api/v1/members/:id`, `/api/v1/members/:id/restore`                       | GET×2, POST, PATCH×2, DELETE    |
+| Loans   | `/api/v1/loans`, `/api/v1/loans/:id`, `/api/v1/loans/:id/return`, `/api/v1/loans/:id/lost`, `/api/v1/loans/:id/restore` | GET×2, POST, PATCH×3, DELETE |
+| Fines   | `/api/v1/fines`, `/api/v1/fines/:id`, `/api/v1/fines/:id/pay`                                  | GET×2, PATCH                   |
+
+### Versi API
+
+- **URI versioning** — semua endpoint (kecuali `GET /` & `GET /docs`) berada di bawah
+  **`/api/v1`**. Versi di-flush saat server start; menaikkan versi = membuat `/api/v2`
+  baru (breaking change), `/api/v1` dipertahankan selama masih didukung.
+- **Versi aplikasi** memakai SemVer dari `package.json` (saat ini **1.0.0**) dan tampil di
+  `GET /` maupun Swagger (`info.version`).
+- `GET /` sengaja **di luar prefix** (`VERSION_NEUTRAL`) agar tetap jadi pengecek server
+  hidup tanpa harus tahu versi API.
+
+`GET /` (respons asli — berisi info versi):
+
+```json
+{
+  "name": "perpustakaan",
+  "version": "1.0.0",
+  "apiVersion": "v1",
+  "status": "ok"
+}
+```
 
 ## 2. Cara Menjalankan
 
@@ -59,7 +80,7 @@ npm run start:dev                 # server + auto-reload (port dari .env / defau
 
 ## 3. Autentikasi
 
-Semua endpoint **kecuali `POST /auth/register`, `POST /auth/login`, dan `GET /`** wajib
+Semua endpoint **kecuali `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, dan `GET /`** wajib
 menyertakan token JWT:
 
 ```http
@@ -70,7 +91,7 @@ Content-Type: application/json
 Cara mendapatkan token:
 
 ```bash
-curl -X POST http://localhost:4000/auth/login \
+curl -X POST http://localhost:4000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"petugas@kampus.ac.id","password":"petugas123"}'
 ```
@@ -93,7 +114,7 @@ Token berlaku **24 jam** (`exp` = `iat` + 86400 detik), berisi klaim `sub` (id u
 | **PETUGAS** (petugas perpustakaan) | ✅ boleh                                     | ✅ boleh   |
 | **ANGGOTA** (peminjam)             | ❌ `403`                                   | ✅ boleh   |
 | **Belum login**                    | ❌ `401`                                   | ❌ `401` |
-| **Publik**                         | — hanya `/auth/register`, `/auth/login` | `GET /`  |
+| **Publik**                         | — hanya `/api/v1/auth/register`, `/api/v1/auth/login` | `GET /`  |
 
 Respons `403` (role salah):
 
@@ -115,7 +136,7 @@ Semua error memakai bentuk standar NestJS. Contoh asli per status:
 | `401` | Token hilang/salah/kedaluwarsa, login gagal                      | `"Token tidak ditemukan"`, `"Email atau password salah"` |
 | `403` | Role bukan PETUGAS pada endpoint mutasi                          | `"Akses ditolak: role Anda tidak memenuhi syarat"`         |
 | `404` | Data tidak ditemukan (atau sudah soft-delete)                    | `"Buku dengan id \"…\" tidak ditemukan"`                  |
-| `409` | Konflik bisnis (duplikat, stok habis, blokir denda, state ganda) | `"ISBN sudah terdaftar untuk buku lain"`                   |
+| `409` | Konflik bisnis (duplikat, stok habis, blokir denda, state ganda, restore saat tak terhapus) | `"ISBN sudah terdaftar untuk buku lain"`, `"Buku tidak dalam status terhapus"` |
 | `500` | Kesalahan tak terduga server                                     | —                                                           |
 
 Contoh `404` (asli):
@@ -155,7 +176,9 @@ Contoh `404` (asli):
 - Anggota dengan fine `BELUM_LUNAS` **ditolak 409** saat meminjam buku baru.
 - Return lewat `dueAt` → fine `TERLAMBAT` = `hari terlambat × FINE_PER_DAY` (otomatis).
 - `lost` → fine `HILANG` = `value` buku (stok tidak kembali).
-- Soft delete: data terhapus punya `deletedAt` terisi dan hilang dari semua GET.
+- Soft delete: data terhapus punya `deletedAt` terisi dan hilang dari daftar aktif;
+  lihat `?deleted=true` (daftar sampah) dan `PATCH …/restore` untuk mengembalikannya.
+- Hapus anggota ikut menonaktifkan akun login (`User`) — restore mengaktifkan keduanya.
 - Kode anggota digenerate otomatis: `AGT-0001`, `AGT-0002`, …
 
 ---
@@ -164,23 +187,28 @@ Contoh `404` (asli):
 
 ### `GET /`
 
-Cek server hidup. **Tanpa auth.**
+Cek server hidup + info versi aplikasi & API (lihat §1 → Versi API). **Tanpa auth, tanpa prefix.**
 
 ```bash
 curl http://localhost:4000/
 ```
 
-`200 OK`:
+`200 OK` (respons asli):
 
 ```json
-"Hello World!"
+{
+  "name": "perpustakaan",
+  "version": "1.0.0",
+  "apiVersion": "v1",
+  "status": "ok"
+}
 ```
 
 ---
 
 ## 8. Endpoint — Auth
 
-### 8.1 `POST /auth/register` — Registrasi anggota baru (publik)
+### 8.1 `POST /api/v1/auth/register` — Registrasi anggota baru (publik)
 
 Membuat **User (role ANGGOTA) + Member** dalam satu transaksi. Kode anggota auto.
 
@@ -197,7 +225,7 @@ Membuat **User (role ANGGOTA) + Member** dalam satu transaksi. Kode anggota auto
 | `address`  | string | ❌    | max 255                 |
 
 ```bash
-curl -X POST http://localhost:4000/auth/register \
+curl -X POST http://localhost:4000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "docMWNBZ4K6@kampus.ac.id",
@@ -230,12 +258,12 @@ curl -X POST http://localhost:4000/auth/register \
 
 **Error:** `400` bila body tidak valid · `409` bila email/username sudah terdaftar.
 
-### 8.2 `POST /auth/login` — Login & ambil token (publik)
+### 8.2 `POST /api/v1/auth/login` — Login & ambil token (publik)
 
 **Request body:** `email` (string, wajib) + `password` (string, wajib).
 
 ```bash
-curl -X POST http://localhost:4000/auth/login \
+curl -X POST http://localhost:4000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"docMWNBZ4K6@kampus.ac.id","password":"rahasia123"}'
 ```
@@ -264,12 +292,12 @@ curl -X POST http://localhost:4000/auth/login \
 }
 ```
 
-### 8.3 `GET /auth/me` — Profil user login (wajib login)
+### 8.3 `GET /api/v1/auth/me` — Profil user login (wajib login)
 
 Untuk ANGGOTA, response menyertakan `member` terkait; untuk PETUGAS, `member: null`.
 
 ```bash
-curl http://localhost:4000/auth/me -H "Authorization: Bearer $TOKEN"
+curl http://localhost:4000/api/v1/auth/me -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` (respons asli):
@@ -293,7 +321,7 @@ curl http://localhost:4000/auth/me -H "Authorization: Bearer $TOKEN"
 ```
 
 > ⚠️ Untuk pinjam buku, gunakan **`member.id`** dari respons ini (bukan `id` user)
-> sebagai `memberId` di `POST /loans`.
+> sebagai `memberId` di `POST /api/v1/loans`.
 
 ---
 
@@ -301,10 +329,20 @@ curl http://localhost:4000/auth/me -H "Authorization: Bearer $TOKEN"
 
 Semua endpoint books **wajib login**; mutasi **khusus PETUGAS**.
 
-### 9.1 `GET /books` — Daftar buku
+### 9.1 `GET /api/v1/books` — Daftar buku
 
 ```bash
-curl http://localhost:4000/books -H "Authorization: Bearer $TOKEN"
+curl http://localhost:4000/api/v1/books -H "Authorization: Bearer $TOKEN"
+```
+
+**Query opsional**
+
+| Query        | Default | Keterangan                                                        |
+| ------------ | ------- | ----------------------------------------------------------------- |
+| `deleted=true` | —     | tampilkan **hanya buku terhapus** (daftar sampah untuk restore); tanpa query → hanya buku aktif |
+
+```bash
+curl "http://localhost:4000/api/v1/books?deleted=true" -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` — array objek buku (respons asli, dipotong):
@@ -327,18 +365,18 @@ curl http://localhost:4000/books -H "Authorization: Bearer $TOKEN"
 ]
 ```
 
-### 9.2 `GET /books/:id` — Detail buku
+### 9.2 `GET /api/v1/books/:id` — Detail buku
 
 `:id` harus UUID. `404` bila tidak ada / sudah di-soft-delete.
 
 ```bash
-curl http://localhost:4000/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
+curl http://localhost:4000/api/v1/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` — objek buku seperti contoh §9.1 (satu objek, bukan array).
 
-### 9.3 `POST /books` — Tambah buku (PETUGAS)
+### 9.3 `POST /api/v1/books` — Tambah buku (PETUGAS)
 
 **Request body**
 
@@ -353,7 +391,7 @@ curl http://localhost:4000/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
 | `stock`     | int    | ❌    | ≥ 0, default 1           |
 
 ```bash
-curl -X POST http://localhost:4000/books \
+curl -X POST http://localhost:4000/api/v1/books \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{
     "title": "Laskar Pelangi",
@@ -422,12 +460,12 @@ curl -X POST http://localhost:4000/books \
 }
 ```
 
-### 9.4 `PATCH /books/:id` — Ubah buku sebagian (PETUGAS)
+### 9.4 `PATCH /api/v1/books/:id` — Ubah buku sebagian (PETUGAS)
 
 Semua field opsional; hanya yang dikirim yang diubah.
 
 ```bash
-curl -X PATCH http://localhost:4000/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
+curl -X PATCH http://localhost:4000/api/v1/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"stock": 3, "publisher": "Bentang Pustaka (m/f)"}'
 ```
@@ -452,10 +490,10 @@ curl -X PATCH http://localhost:4000/books/cb51760e-fe70-47bb-987f-2c3988a40936 \
 
 **Error:** `400` validasi · `403` bukan PETUGAS · `404` tak ditemukan · `409` ISBN bentrok.
 
-### 9.5 `DELETE /books/:id` — Hapus buku (PETUGAS, soft delete)
+### 9.5 `DELETE /api/v1/books/:id` — Hapus buku (PETUGAS, soft delete)
 
 ```bash
-curl -X DELETE http://localhost:4000/books/253c48d8-3af2-4e78-a048-5fc492580a4c \
+curl -X DELETE http://localhost:4000/api/v1/books/253c48d8-3af2-4e78-a048-5fc492580a4c \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -464,16 +502,68 @@ curl -X DELETE http://localhost:4000/books/253c48d8-3af2-4e78-a048-5fc492580a4c 
 > DELETE kedua pada id yang sama → `404` (sudah punya `deletedAt`; respons asli:
 > `"Buku dengan id \"…\" tidak ditemukan"`).
 
+Data terhapus tidak hilang dari DB — muncul di `GET /api/v1/books?deleted=true` (§9.1) dan
+bisa dikembalikan lewat §9.6.
+
+### 9.6 `PATCH /api/v1/books/:id/restore` — Restore buku terhapus (PETUGAS)
+
+Membatalkan soft delete: `deletedAt` dikosongkan sehingga buku muncul kembali di katalog.
+
+```bash
+curl -X PATCH http://localhost:4000/api/v1/books/253c48d8-3af2-4e78-a048-5fc492580a4c/restore \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+`200 OK` (respons asli — objek buku dengan `deletedAt: null`):
+
+```json
+{
+  "id": "98f85885-09b8-4e76-920f-1efd31d8d324",
+  "title": "Buku Capture",
+  "author": "Penulis Capture",
+  "isbn": "978-CAP-105651144",
+  "publisher": "Penerbit Capture",
+  "year": 2026,
+  "value": 50000,
+  "stock": 1,
+  "createdAt": "2026-11-20T03:56:51.149Z",
+  "updatedAt": "2026-11-20T03:56:51.224Z",
+  "deletedAt": null
+}
+```
+
+**Error `409`** — restore kedua kali, buku tidak sedang terhapus (respons asli):
+
+```json
+{
+  "message": "Buku tidak dalam status terhapus",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
+
+**Error lain:** `400` bukan UUID · `403` bukan PETUGAS · `404` id tidak ditemukan.
+
 ---
 
 ## 10. Endpoint — Members
 
 Semua endpoint members **wajib login**; mutasi **khusus PETUGAS**.
 
-### 10.1 `GET /members` — Daftar anggota
+### 10.1 `GET /api/v1/members` — Daftar anggota
 
 ```bash
-curl http://localhost:4000/members -H "Authorization: Bearer $TOKEN"
+curl http://localhost:4000/api/v1/members -H "Authorization: Bearer $TOKEN"
+```
+
+**Query opsional**
+
+| Query          | Default | Keterangan                                                          |
+| -------------- | ------- | ------------------------------------------------------------------- |
+| `deleted=true` | —       | tampilkan **hanya anggota terhapus** (daftar sampah untuk restore); tanpa query → hanya anggota aktif |
+
+```bash
+curl "http://localhost:4000/api/v1/members?deleted=true" -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` — array anggota; anggota yang punya akun login menyertakan `user` (respons asli, dipotong):
@@ -517,16 +607,16 @@ curl http://localhost:4000/members -H "Authorization: Bearer $TOKEN"
 ]
 ```
 
-### 10.2 `GET /members/:id` — Detail anggota
+### 10.2 `GET /api/v1/members/:id` — Detail anggota
 
 ```bash
-curl http://localhost:4000/members/3747ad35-c383-4dcf-97fb-2a133b24517a \
+curl http://localhost:4000/api/v1/members/3747ad35-c383-4dcf-97fb-2a133b24517a \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` — satu objek anggota (bentuk sama dengan item §10.1). `404` bila tak ditemukan.
 
-### 10.3 `POST /members` — Tambah anggota manual (PETUGAS)
+### 10.3 `POST /api/v1/members` — Tambah anggota manual (PETUGAS)
 
 Berbeda dengan register: **tanpa password** — anggota dibuat tanpa akun login,
 kecuali `userId` diisi untuk menyambungkan ke User yang sudah ada (1:1).
@@ -543,7 +633,7 @@ kecuali `userId` diisi untuk menyambungkan ke User yang sudah ada (1:1).
 | `userId`  | uuid-string | ❌    | User yang sudah ada (opsional) |
 
 ```bash
-curl -X POST http://localhost:4000/members \
+curl -X POST http://localhost:4000/api/v1/members \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{
     "name": "Siti Aminah",
@@ -576,10 +666,10 @@ curl -X POST http://localhost:4000/members \
 
 **Error:** `400` validasi · `403` bukan PETUGAS · `404` `userId` tak ditemukan · `409` email/telepon bentrok.
 
-### 10.4 `PATCH /members/:id` — Ubah anggota sebagian (PETUGAS)
+### 10.4 `PATCH /api/v1/members/:id` — Ubah anggota sebagian (PETUGAS)
 
 ```bash
-curl -X PATCH http://localhost:4000/members/3747ad35-c383-4dcf-97fb-2a133b24517a \
+curl -X PATCH http://localhost:4000/api/v1/members/3747ad35-c383-4dcf-97fb-2a133b24517a \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"address": "Jalan Kenanga 7, Surabaya"}'
 ```
@@ -604,14 +694,70 @@ curl -X PATCH http://localhost:4000/members/3747ad35-c383-4dcf-97fb-2a133b24517a
 }
 ```
 
-### 10.5 `DELETE /members/:id` — Hapus anggota (PETUGAS, soft delete)
+### 10.5 `DELETE /api/v1/members/:id` — Hapus anggota (PETUGAS, soft delete)
 
 ```bash
-curl -X DELETE http://localhost:4000/members/3747ad35-c383-4dcf-97fb-2a133b24517a \
+curl -X DELETE http://localhost:4000/api/v1/members/3747ad35-c383-4dcf-97fb-2a133b24517a \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 `204 No Content` — tanpa body. Ulangi → `404`.
+
+> **Cascade ke akun login:** bila anggota punya akun (`userId` terisi), `User` ikut
+> di-soft-delete dalam transaksi yang sama → anggota yang dihapus **tidak bisa login**
+> (`POST /api/v1/auth/login` → `401`). Restore (§10.6) mengaktifkan keduanya.
+
+Data terhapus tidak hilang dari DB — muncul di `GET /api/v1/members?deleted=true` (§10.1)
+dan bisa dikembalikan lewat §10.6.
+
+### 10.6 `PATCH /api/v1/members/:id/restore` — Restore anggota (PETUGAS)
+
+Membatalkan soft delete: `deletedAt` anggota dikosongkan **dan akun login (`User`) ikut
+diaktifkan kembali** dalam satu transaksi — anggota bisa login lagi.
+
+```bash
+curl -X PATCH http://localhost:4000/api/v1/members/4b393374-c0e2-4d2f-9d1a-e3917905382c/restore \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+`200 OK` (respons asli — `deletedAt` anggota `null`, `user` tetap tersambung):
+
+```json
+{
+  "id": "4b393374-c0e2-4d2f-9d1a-e3917905382c",
+  "code": "AGT-0016",
+  "name": "Anggota Capture",
+  "email": "cap105651281@kampus.ac.id",
+  "phone": "081234567890",
+  "nim": "2026CAP105651281",
+  "address": "Jalan Capture 1",
+  "joinedAt": "2026-11-20T03:56:51.361Z",
+  "userId": "b2b209af-39ad-4475-bd93-56b9ebf7b011",
+  "createdAt": "2026-11-20T03:56:51.361Z",
+  "updatedAt": "2026-11-20T03:56:51.439Z",
+  "deletedAt": null,
+  "user": {
+    "id": "b2b209af-39ad-4475-bd93-56b9ebf7b011",
+    "email": "cap105651281@kampus.ac.id",
+    "role": "ANGGOTA"
+  }
+}
+```
+
+Alur terverifikasi (respons asli): anggota dihapus → `POST /api/v1/auth/login` → **`401`**
+`"Email atau password salah"` → restore → login → **`200 OK`**.
+
+**Error `409`** — restore kedua kali (respons asli):
+
+```json
+{
+  "message": "Anggota tidak dalam status terhapus",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
+
+**Error lain:** `400` bukan UUID · `403` bukan PETUGAS · `404` id tidak ditemukan.
 
 ---
 
@@ -619,10 +765,20 @@ curl -X DELETE http://localhost:4000/members/3747ad35-c383-4dcf-97fb-2a133b24517
 
 Semua endpoint loans **wajib login**; mutasi **khusus PETUGAS**.
 
-### 11.1 `GET /loans` — Daftar peminjaman
+### 11.1 `GET /api/v1/loans` — Daftar peminjaman
 
 ```bash
-curl http://localhost:4000/loans -H "Authorization: Bearer $TOKEN"
+curl http://localhost:4000/api/v1/loans -H "Authorization: Bearer $TOKEN"
+```
+
+**Query opsional**
+
+| Query          | Default | Keterangan                                                              |
+| -------------- | ------- | ----------------------------------------------------------------------- |
+| `deleted=true` | —       | tampilkan **hanya peminjaman terhapus** (daftar sampah untuk restore); tanpa query → hanya yang aktif |
+
+```bash
+curl "http://localhost:4000/api/v1/loans?deleted=true" -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` — array peminjaman lengkap dengan relasi `member`, `book`, dan `fine`
@@ -658,29 +814,29 @@ curl http://localhost:4000/loans -H "Authorization: Bearer $TOKEN"
 
 > Peminjaman dengan denda menyertakan `fine: { "id", "amount", "status" }` di dalamnya.
 
-### 11.2 `GET /loans/:id` — Detail peminjaman
+### 11.2 `GET /api/v1/loans/:id` — Detail peminjaman
 
 ```bash
-curl http://localhost:4000/loans/7ee99ef6-372d-439d-a9bb-546877787a0b \
+curl http://localhost:4000/api/v1/loans/7ee99ef6-372d-439d-a9bb-546877787a0b \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` — satu objek (bentuk sama §11.1). `404` bila tak ditemukan.
 
-### 11.3 `POST /loans` — Buat peminjaman (PETUGAS)
+### 11.3 `POST /api/v1/loans` — Buat peminjaman (PETUGAS)
 
 **Request body**
 
 | Field        | Tipe        | Wajib | Ketentuan                                                                          |
 | ------------ | ----------- | ----- | ---------------------------------------------------------------------------------- |
-| `memberId` | uuid-string | ✅    | id **Member** (dari `GET /auth/me` → `member.id` atau `GET /members`) |
+| `memberId` | uuid-string | ✅    | id **Member** (dari `GET /api/v1/auth/me` → `member.id` atau `GET /api/v1/members`) |
 | `bookId`   | uuid-string | ✅    | id buku dengan `stock > 0`                                                       |
 
 **Aturan:** stok dikurangi · `dueAt` = sekarang + `LOAN_DURATION_DAYS` (default 7 hari) ·
 ditolak `409` bila stok habis **atau** anggota punya denda `BELUM_LUNAS`.
 
 ```bash
-curl -X POST http://localhost:4000/loans \
+curl -X POST http://localhost:4000/api/v1/loans \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"memberId":"f499a01a-df6a-4fc9-b2ec-995ddd6202e5","bookId":"cb51760e-fe70-47bb-987f-2c3988a40936"}'
 ```
@@ -724,7 +880,7 @@ curl -X POST http://localhost:4000/loans \
 
 **Error lain:** `404` bila buku/anggota tidak ditemukan · `409` `"Stok buku habis, tidak bisa dipinjam"`.
 
-### 11.4 `PATCH /loans/:id/return` — Proses pengembalian (PETUGAS)
+### 11.4 `PATCH /api/v1/loans/:id/return` — Proses pengembalian (PETUGAS)
 
 Mengubah status → `DIKEMBALIKAN`, **mengembalikan stok**, dan bila lewat jatuh tempo
 membuat fine `TERLAMBAT` (`hari × FINE_PER_DAY`). Body `loanId` otomatis disamakan
@@ -733,7 +889,7 @@ dengan `:id`.
 **Request body:** `{ "loanId": "<id yang sama dengan :id>" }`
 
 ```bash
-curl -X PATCH http://localhost:4000/loans/7ee99ef6-372d-439d-a9bb-546877787a0b/return \
+curl -X PATCH http://localhost:4000/api/v1/loans/7ee99ef6-372d-439d-a9bb-546877787a0b/return \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"loanId":"7ee99ef6-372d-439d-a9bb-546877787a0b"}'
 ```
@@ -772,13 +928,13 @@ curl -X PATCH http://localhost:4000/loans/7ee99ef6-372d-439d-a9bb-546877787a0b/r
 
 **Error:** `404` tak ditemukan · `409` `"Buku sudah dikembalikan sebelumnya"`.
 
-### 11.5 `PATCH /loans/:id/lost` — Tandai buku hilang (PETUGAS)
+### 11.5 `PATCH /api/v1/loans/:id/lost` — Tandai buku hilang (PETUGAS)
 
 Status → `HILANG`, dibuat fine `HILANG` senilai `value` buku, **stok tidak kembali**.
 Anggota terblokir pinjam sampai denda lunas.
 
 ```bash
-curl -X PATCH http://localhost:4000/loans/ae1cb685-a0cd-4b6e-b5d2-539a6f9187bd/lost \
+curl -X PATCH http://localhost:4000/api/v1/loans/ae1cb685-a0cd-4b6e-b5d2-539a6f9187bd/lost \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -813,27 +969,71 @@ curl -X PATCH http://localhost:4000/loans/ae1cb685-a0cd-4b6e-b5d2-539a6f9187bd/l
 
 **Error:** `404` tak ditemukan · `409` sudah `HILANG` / peminjaman sudah `DIKEMBALIKAN`.
 
-### 11.6 `DELETE /loans/:id` — Hapus peminjaman (PETUGAS, soft delete)
+### 11.6 `DELETE /api/v1/loans/:id` — Hapus peminjaman (PETUGAS, soft delete)
 
 ```bash
-curl -X DELETE http://localhost:4000/loans/<id> -H "Authorization: Bearer $TOKEN"
+curl -X DELETE http://localhost:4000/api/v1/loans/<id> -H "Authorization: Bearer $TOKEN"
 ```
 
 `204 No Content` — tanpa body. Ulangi → `404`.
+
+> Soft delete peminjaman hanya untuk **pembatalan data salah** — pengembalian buku fisik
+> tetap lewat §11.4 (`/return`). Stok tidak disentuh saat delete.
+
+Data terhapus tidak hilang dari DB — muncul di `GET /api/v1/loans?deleted=true` (§11.1)
+dan bisa dikembalikan lewat §11.7.
+
+### 11.7 `PATCH /api/v1/loans/:id/restore` — Restore peminjaman (PETUGAS)
+
+Membatalkan soft delete: `deletedAt` dikosongkan sehingga riwayat peminjaman muncul kembali.
+
+```bash
+curl -X PATCH http://localhost:4000/api/v1/loans/9ea6d8a8-f22f-4ee7-9be8-2d5182c99c05/restore \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+`200 OK` (respons asli — objek peminjaman dengan `deletedAt: null`):
+
+```json
+{
+  "id": "9ea6d8a8-f22f-4ee7-9be8-2d5182c99c05",
+  "status": "DIPINJAM",
+  "borrowedAt": "2026-11-20T03:56:51.602Z",
+  "dueAt": "2026-11-27T03:56:51.602Z",
+  "returnedAt": null,
+  "memberId": "4b393374-c0e2-4d2f-9d1a-e3917905382c",
+  "bookId": "98f85885-09b8-4e76-920f-1efd31d8d324",
+  "createdAt": "2026-11-20T03:56:51.605Z",
+  "updatedAt": "2026-11-20T03:56:51.666Z",
+  "deletedAt": null
+}
+```
+
+**Error `409`** — restore kedua kali (respons asli):
+
+```json
+{
+  "message": "Peminjaman tidak dalam status terhapus",
+  "error": "Conflict",
+  "statusCode": 409
+}
+```
+
+**Error lain:** `400` bukan UUID · `403` bukan PETUGAS · `404` id tidak ditemukan.
 
 ---
 
 ## 12. Endpoint — Fines
 
 Semua endpoint fines **wajib login**; pelunasan **khusus PETUGAS**.
-Denda dibuat otomatis oleh sistem (terlambat / hilang) — tidak ada `POST /fines`.
+Denda dibuat otomatis oleh sistem (terlambat / hilang) — tidak ada `POST /api/v1/fines`.
 
-### 12.1 `GET /fines` — Daftar denda
+### 12.1 `GET /api/v1/fines` — Daftar denda
 
 Urutan: `BELUM_LUNAS` dulu, terbaru di atas.
 
 ```bash
-curl http://localhost:4000/fines -H "Authorization: Bearer $TOKEN"
+curl http://localhost:4000/api/v1/fines -H "Authorization: Bearer $TOKEN"
 ```
 
 `200 OK` (respons asli, dipotong satu item):
@@ -866,10 +1066,10 @@ curl http://localhost:4000/fines -H "Authorization: Bearer $TOKEN"
 ]
 ```
 
-### 12.2 `GET /fines/:id` — Detail denda
+### 12.2 `GET /api/v1/fines/:id` — Detail denda
 
 ```bash
-curl http://localhost:4000/fines/86fa7f38-22ac-4abc-8e9b-d5106955e794 \
+curl http://localhost:4000/api/v1/fines/86fa7f38-22ac-4abc-8e9b-d5106955e794 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -905,14 +1105,14 @@ curl http://localhost:4000/fines/86fa7f38-22ac-4abc-8e9b-d5106955e794 \
 
 `404` bila tidak ditemukan.
 
-### 12.3 `PATCH /fines/:id/pay` — Lunaskan denda (PETUGAS)
+### 12.3 `PATCH /api/v1/fines/:id/pay` — Lunaskan denda (PETUGAS)
 
 `BELUM_LUNAS` → `LUNAS` + `paidAt` terisi. **Membuka blokir** pinjam baru bagi anggota.
 
 **Request body (opsional):** `{ "notes": "catatan" }` — tidak mempengaruhi response.
 
 ```bash
-curl -X PATCH http://localhost:4000/fines/86fa7f38-22ac-4abc-8e9b-d5106955e794/pay \
+curl -X PATCH http://localhost:4000/api/v1/fines/86fa7f38-22ac-4abc-8e9b-d5106955e794/pay \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"notes":"Dibayar tunai di loket perpustakaan"}'
 ```
@@ -967,7 +1167,7 @@ kembalikan → pinjam → hilang → ditolak blokir → lunasi denda → pinjam 
 #!/usr/bin/env bash
 # Alur lengkap perpustakaan — butuh server jalan + seeder PETUGAS.
 set -e
-BASE="http://localhost:4000"
+BASE="http://localhost:4000/api/v1"
 CT="Content-Type: application/json"
 RUN=$(date +%s)
 
@@ -1040,11 +1240,10 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/loans \
 | Batasan                          | Keterangan                                                                                                |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Tanpa pagination / filter / sort | `GET` list mengembalikan **semua** data aktif — fine untuk data kecil (skala magang)             |
-| Soft delete tidak di-rollback    | Data terhapus hanya hilang dari tampilan; tidak ada endpoint restore                                      |
-| 1 peminjaman = 1 buku            | Belum ada pivot `LoanItem` — banyak buku = banyak request `POST /loans`                              |
-| Pelunasan manual                 | Tidak ada pembayaran otomatis — petugas memproses via `PATCH /fines/:id/pay`                           |
+| 1 peminjaman = 1 buku            | Belum ada pivot `LoanItem` — banyak buku = banyak request `POST /api/v1/loans`                              |
+| Pelunasan manual                 | Tidak ada pembayaran otomatis — petugas memproses via `PATCH /api/v1/fines/:id/pay`                           |
 | Tanpa refresh token              | Token berlaku 24 jam; habis → login ulang                                                                |
-| `GET /fines` tanpa filter      | Tidak ada query `?status=BELUM_LUNAS` — filter dilakukan di sisi klien                                 |
+| `GET /api/v1/fines` tanpa filter      | Tidak ada query `?status=BELUM_LUNAS` — filter dilakukan di sisi klien                                 |
 | Swagger `helmet`               | `contentSecurityPolicy` dimatikan agar Swagger UI bisa memuat asetnya; header keamanan lain tetap aktif |
 
 ---
@@ -1054,5 +1253,5 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/loans \
 - [`docs/erd.md`](./erd.md) — Diagram relasi database (Mermaid)
 - [`docs/prd.md`](./prd.md) — Kebutuhan & aturan bisnis
 - [`docs/testing.md`](./testing.md) — Panduan menulis unit & e2e test
-- [`docs/test-report.md`](./test-report.md) — Hasil run 142 unit + 18 e2e
+- [`docs/test-report.md`](./test-report.md) — Hasil run 161 unit + 36 e2e
 - [`docs/structure.md`](./structure.md) — Struktur folder & arsitektur

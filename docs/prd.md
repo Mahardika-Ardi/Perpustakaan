@@ -7,7 +7,8 @@
 | **Konteks** | Tugas magang: implementasi CRUD + dokumentasi lengkap |
 | **Stack** | NestJS (TypeScript) + Prisma + PostgreSQL |
 | **Status** | Phase 1 |
-| **Dokumen terkait** | [`docs/erd.md`](./erd.md) — struktur database |
+| **Dokumen terkait** | [`docs/erd.md`](./erd.md) — struktur database · [`docs/api.md`](./api.md) — endpoint |
+| **Prefix API** | Semua endpoint di bawah `/api/v1` (kecuali `GET /`) — versi app `1.0.0` |
 
 ---
 
@@ -44,9 +45,11 @@ masalah:
 
 - [x] Seluruh endpoint CRUD berfungsi dan lulus unit test + e2e test.
 - [x] Denda keterlambatan terhitung otomatis saat pengembalian (`hari × FINE_PER_DAY`).
-- [x] Denda kehilangan tercatat sebesar nilai buku saat `POST /loans/:id/lost`.
+- [x] Denda kehilangan tercatat sebesar nilai buku saat `PATCH /loans/:id/lost`.
 - [x] Anggota dengan denda `BELUM_LUNAS` ditolak (`409`) saat meminjam.
 - [x] Endpoint mutasi hanya dapat diakses oleh role `PETUGAS`.
+- [x] Data terhapus bisa dikembalikan (`PATCH …/:id/restore`) dan akun anggota
+      ikut nonaktif/aktif mengikuti status anggotanya.
 
 ## 4. Pengguna (Aktor) & Hak Akses
 
@@ -73,7 +76,8 @@ masalah:
 Kelola katalog buku: judul, penulis, ISBN, penerbit, tahun, nilai buku, dan stok.
 
 - **Alasan:** digitalisasi katalog, menggantikan pencatatan manual yang rawan hilang.
-- **Endpoint:** `GET/POST /books`, `GET/PATCH/DELETE /books/:id` (soft delete).
+- **Endpoint:** `GET/POST /books`, `GET/PATCH/DELETE /books/:id` (soft delete),
+  `PATCH /books/:id/restore` (kembalikan data terhapus).
 
 ### 5.2 Manajemen Anggota (CRUD)
 
@@ -84,7 +88,10 @@ tabel `MEMBER` — tidak diduplikasi ke `USER`.
 - **Alasan:** identitas peminjam terdaftar sehingga petugas/pemilik perpustakaan langsung
   mengenali orang yang meminjam tanpa menebak-nebak username, dan riwayat pinjam bisa
   dilacak.
-- **Endpoint:** `GET/POST /members`, `GET/PATCH/DELETE /members/:id`.
+- **Endpoint:** `GET/POST /members`, `GET/PATCH/DELETE /members/:id`,
+  `PATCH /members/:id/restore`.
+- **Cascade:** menghapus anggota ikut menonaktifkan akun login (`User`) agar tidak
+  setengah mati — restore mengaktifkan keduanya kembali.
 - **Tampilan:** daftar pinjaman/denda menampilkan identitas anggota lewat join
   (`member.name`, `member.code`, dst.), bukan lewat kolom ganda.
 
@@ -110,7 +117,7 @@ Menyelesaikan pinjaman: status `DIKEMBALIKAN`, stok dikembalikan, dan keterlamba
 dihitung otomatis menjadi denda.
 
 - **Alasan:** keterlambatan terdeteksi otomatis; memberi efek jera/disiplin bagi anggota.
-- **Endpoint:** `POST /loans/:id/return`.
+- **Endpoint:** `PATCH /loans/:id/return`.
 
 ### 5.6 Kehilangan Buku
 
@@ -118,7 +125,7 @@ Menandai pinjaman berstatus `HILANG`: stok tidak dikembalikan, denda dibuat sebe
 nilai buku.
 
 - **Alasan:** pertanggungjawaban aset — kehilangan tercatat sebagai tanggung jawab anggota.
-- **Endpoint:** `POST /loans/:id/lost`.
+- **Endpoint:** `PATCH /loans/:id/lost`.
 
 ### 5.7 Denda & Pelunasan
 
@@ -127,6 +134,28 @@ Daftar denda per anggota/pinjaman beserta penandaan pelunasan manual oleh petuga
 - **Alasan:** realistis seperti perpustakaan pada umumnya; mencatat tanggungan tiap
   anggota agar tidak lupa ditagih.
 - **Endpoint:** `GET /fines`, `GET /fines/:id`, `PATCH /fines/:id/pay`.
+
+### 5.8 Restore Data Terhapus
+
+Soft delete tidak permanen: data yang dihapus tetap tersimpan (`deletedAt` terisi) dan
+bisa dikembalikan oleh petugas. Daftar data terhapus lewat query `?deleted=true`.
+
+- **Alasan:** mencegah data hilang permanen akibat salah hapus; `deletedAt` jadi
+  benar-benar berguna, bukan sekadar penyembunyian.
+- **Endpoint:** `PATCH /books/:id/restore`, `PATCH /members/:id/restore`,
+  `PATCH /loans/:id/restore` + `GET …?deleted=true` di ketiga modul.
+- **Cascade anggota:** hapus anggota ikut menonaktifkan akun login (`User`) —
+  anggota terhapus tidak bisa login; restore mengaktifkan keduanya.
+- **Error:** `404` bila id tidak ada · `409` bila data tidak sedang terhapus.
+
+### 5.9 Versioning API
+
+Semua endpoint berada di bawah prefix **`/api/v1`** (URI versioning), dan versi
+aplikasi memakai SemVer — tampil di `GET /` serta Swagger.
+
+- **Alasan:** perubahan breaking change di masa depan bisa dirilis sebagai `/api/v2`
+  tanpa merusak klien lama; versi aplikasi mudah dilacak.
+- **Endpoint:** `GET /` (tanpa prefix — info `version`, `apiVersion`, `status`).
 
 ## 6. Aturan Bisnis
 
@@ -140,6 +169,9 @@ Daftar denda per anggota/pinjaman beserta penandaan pelunasan manual oleh petuga
    `HILANG` sebesar `Book.value`.
 5. **Pelunasan** — manual oleh petugas (`PATCH /fines/:id/pay`) setelah anggota membayar;
    blokir pinjam terbuka begitu tidak ada denda `BELUM_LUNAS`.
+6. **Soft delete & restore** — hapus hanya mengisi `deletedAt` (data tetap di DB, hilang
+   dari daftar aktif). `PATCH …/:id/restore` mengosongkannya kembali; bila data tidak
+   sedang terhapus → `409`. Hapus anggota ikut menonaktifkan akun login-nya.
 
 ## 7. Di Luar Scope (Fase Selanjutnya)
 
@@ -156,7 +188,7 @@ serta pinjam multi-buku (butuh tabel pivot `LoanItem`).
 | Aspek | Kebutuhan |
 |---|---|
 | **Keamanan** | Password di-hash (bcrypt), token JWT untuk akses terproteksi |
-| **Integritas data** | Soft delete (`deletedAt`) pada User/Member/Book/Loan agar riwayat tidak hilang |
+| **Integritas data** | Soft delete (`deletedAt`) pada User/Member/Book/Loan agar riwayat tidak hilang; bisa dikembalikan via `PATCH …/:id/restore` |
 | **Validasi input** | Seluruh request divalidasi (`class-validator`) |
 | **Konfigurasi** | Tarif denda lewat `.env` (`FINE_PER_DAY`) — dapat diubah tanpa redeploy/migrasi |
 | **Pengujian** | Unit test + e2e test lulus (`npm test`, `npm run test:e2e`) |
@@ -167,13 +199,14 @@ serta pinjam multi-buku (butuh tabel pivot `LoanItem`).
 
 - **ERD / Struktur database:** [`docs/erd.md`](./erd.md)
 
-**Daftar endpoint ringkas:**
+**Daftar endpoint ringkas** (semua path ber-prefix `/api/v1`, kecuali `GET /`):
 
 ```
+GET  /               info server + versi app & API (tanpa prefix)
 /auth        POST /register, POST /login, GET /me
-/books       GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/members     GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/loans       GET, POST, GET/:id, PATCH/:id, DELETE/:id
-/loans       POST /:id/return, POST /:id/lost
+/books       GET (?deleted=true), POST, GET/:id, PATCH/:id, DELETE/:id, PATCH /:id/restore
+/members     GET (?deleted=true), POST, GET/:id, PATCH/:id, DELETE/:id, PATCH /:id/restore
+/loans       GET (?deleted=true), POST, GET/:id, DELETE/:id
+/loans       PATCH /:id/return, PATCH /:id/lost, PATCH /:id/restore
 /fines       GET, GET/:id, PATCH /:id/pay
 ```

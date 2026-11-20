@@ -148,6 +148,6 @@ Dipakai untuk memastikan aturan akses (`@Roles`) tidak hilang saat refactor.
 | Butuh DB? | ❌ tidak | ✅ ya (PostgreSQL menyala) |
 | Kecepatan | milidetik | detik |
 
-**Status:** ✅ e2e penuh **sudah dijalankan** — 18 test lulus (register → login →
-buku → pinjam → kembalikan → hilang → denda → lunas). Detail & prasyarat di
-`docs/test-report.md` §3.
+**Status:** ✅ e2e penuh **sudah dijalankan** — 36 test lulus (versi `/api/v1` →
+register → login → buku → pinjam → kembalikan → hilang → denda → lunas →
+restore buku/anggota + cascade akun). Detail & prasyarat di `docs/test-report.md` §3.

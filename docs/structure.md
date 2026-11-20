@@ -14,19 +14,21 @@ simple-crud/
 │   ├── api.md                      Dokumentasi API: semua endpoint + contoh asli
 │   ├── structure.md                Dokumen ini
 │   ├── testing.md                  Panduan testing: pola, resep, aturan
-│   └── test-report.md              Laporan hasil run: 142 unit + 18 e2e + coverage
+│   └── test-report.md              Laporan hasil run: 161 unit + 36 e2e + coverage
 │
 ├── src/                         	 Sumber kode aplikasi
-│   ├── main.ts                      Bootstrap: helmet, port, Swagger (/docs), inisialisasi app
+│   ├── main.ts                      Bootstrap: helmet, Swagger (/docs), panggil setupApp
+│   ├── setup-app.ts                 Prefix /api/v1 + versioning URI + validasi global
+│   ├── app-info.ts                  Info versi dari package.json (GET / & Swagger)
 │   ├── app.module.ts                Root module — mendaftarkan semua module fitur
-│   ├── app.controller.ts            Endpoint GET / (hello) — contoh bawaan
-│   ├── app.service.ts               Logika endpoint hello
+│   ├── app.controller.ts            Endpoint GET / — info server + versi app & API
+│   ├── app.service.ts               Menyusun object info versi
 │   ├── generated/                   Output Prisma client — jangan diedit manual
 │   ├── common/                      Lintas modul: prisma/, guards/, decorators/, types/
 │   ├── auth/                        Register/login/me, JWT (JwtModule global), DTO auth
-│   ├── books/                       CRUD katalog buku
-│   ├── members/                     CRUD anggota (identitas peminjam)
-│   ├── loans/                       Peminjaman, pengembalian, kehilangan
+│   ├── books/                       CRUD katalog buku + restore
+│   ├── members/                     CRUD anggota (identitas peminjam) + restore
+│   ├── loans/                       Peminjaman, pengembalian, kehilangan + restore
 │   └── fines/                       Daftar denda & pelunasan
 │
 ├── prisma/                      	 Konfigurasi database
@@ -70,7 +72,7 @@ simple-crud/
 3. **Prisma client hanya dipanggil dari service.** Tidak ada `import { PrismaClient }`
    di controller/DTO.
 4. **DTO adalah batas data.** Semua input datang lewat DTO yang divalidasi
-   (`ValidationPipe` global di `main.ts`).
+   (`ValidationPipe` global di `src/setup-app.ts` — dipanggil `main.ts` & test e2e).
 5. **Satu fitur = satu folder module** (`books/`, `loans/`, …). Controller, service, dan
    DTO sebuah fitur tidak boleh terpisah ke folder lain.
 6. **`common/` hanya untuk yang benar-benar dipakai ≥ 2 modul.** Kalau cuma dipakai satu
