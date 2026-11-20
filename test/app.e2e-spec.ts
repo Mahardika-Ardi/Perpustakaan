@@ -1,27 +1,30 @@
-import 'dotenv/config'; // muat .env SEBELUM PrismaService terkonstruksi
+import 'dotenv/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
+import { setupApp } from './../src/setup-app.js';
 
-/**
- * E2E test alur lengkap perpustakaan:
- *
- * 1. Register anggota baru
- * 2. Login anggota & PETUGAS (via seeder)
- * 3. PETUGAS menambah buku
- * 4. PETUGAS meminjam buku ke anggota
- * 5. Kembalikan buku (on-time → tanpa denda)
- * 6. Pinjam lagi, tandai hilang → Fine HILANG dibuat
- * 7. Pinjam lagi → DITOLAK 409 (fine belum lunas)
- * 8. Lunaskan fine (khusus PETUGAS) → blokir terbuka
- *
- * Catatan:
- * - Butuh DB lokal menyala (localhost:5432/perpustakaan) dan seeder PETUGAS
- *   sudah dijalankan. Jalankan via `npm run test:e2e`.
- * - Data dibuat unik tiap run (`RUN_ID`) supaya bisa diulang tanpa 409.
- */
+//  E2E test alur lengkap perpustakaan:
+//
+//  0. GET / (info versi) & route tanpa prefix → 404
+//  1. Register anggota baru
+//  2. Login anggota & PETUGAS (via seeder)
+//  3. PETUGAS menambah buku
+//  4. PETUGAS meminjam buku ke anggota
+//  5. Kembalikan buku (on-time → tanpa denda)
+//  6. Pinjam lagi, tandai hilang → Fine HILANG dibuat
+//  7. Pinjam lagi → DITOLAK 409 (fine belum lunas)
+//  8. Lunaskan fine (khusus PETUGAS) → blokir terbuka
+//
+//  Catatan:
+//  - Semua request memakai prefix versioning API (const API di bawah).
+//  - Butuh DB lokal menyala (localhost:5432/perpustakaan) dan seeder PETUGAS
+//    sudah dijalankan. Jalankan via `npm run test:e2e`.
+//  - Data dibuat unik tiap run (`RUN_ID`) supaya bisa diulang tanpa 409.
+//
 
+const API = '/api/v1';
 const RUN_ID = Date.now().toString(36).toUpperCase();
 const EMAIL = `e2e${RUN_ID}@kampus.ac.id`;
 const USERNAME = `e2e${RUN_ID}`;
@@ -44,6 +47,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    setupApp(app); // sama persis dengan bootstrap() main.ts (prefix /api/v1, versioning)
     await app.init();
   });
 
@@ -51,10 +55,27 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
     await app.close();
   });
 
+  describe('Root & versioning', () => {
+    it('GET / — info server + versi app & API (tanpa prefix / versi)', async () => {
+      const res = await request(app.getHttpServer()).get('/').expect(200);
+
+      expect(res.body).toMatchObject({ apiVersion: 'v1', status: 'ok' });
+      expect(res.body.name).toBe('perpustakaan');
+      expect(res.body.version).toMatch(/^\d+\.\d+\.\d+$/);
+    });
+
+    it('route tanpa prefix /api/v1 → 404', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: EMAIL, password: PASSWORD })
+        .expect(404);
+    });
+  });
+
   describe('Auth', () => {
     it('POST /auth/register — mendaftarkan anggota baru', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post(`${API}/auth/register`)
         .send({
           email: EMAIL,
           username: USERNAME,
@@ -74,7 +95,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('POST /auth/login — anggota berhasil login', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post(`${API}/auth/login`)
         .send({ email: EMAIL, password: PASSWORD })
         .expect(200);
 
@@ -85,7 +106,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('POST /auth/login — PETUGAS berhasil login (via seeder)', async () => {
       const res = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post(`${API}/auth/login`)
         .send({ email: 'petugas@kampus.ac.id', password: 'petugas123' })
         .expect(200);
 
@@ -96,7 +117,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('GET /auth/me — profil berisi data anggota terkait', async () => {
       const res = await request(app.getHttpServer())
-        .get('/auth/me')
+        .get(`${API}/auth/me`)
         .set('Authorization', `Bearer ${accessTokenAnggota}`)
         .expect(200);
 
@@ -106,14 +127,14 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
     });
 
     it('GET /auth/me — ditolak tanpa token (401)', async () => {
-      await request(app.getHttpServer()).get('/auth/me').expect(401);
+      await request(app.getHttpServer()).get(`${API}/auth/me`).expect(401);
     });
   });
 
   describe('Books (PETUGAS)', () => {
     it('POST /books — PETUGAS menambah buku', async () => {
       const res = await request(app.getHttpServer())
-        .post('/books')
+        .post(`${API}/books`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({
           title: `Buku E2E ${RUN_ID}`,
@@ -133,7 +154,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('POST /books — ditolak bila bukan PETUGAS (403)', async () => {
       await request(app.getHttpServer())
-        .post('/books')
+        .post(`${API}/books`)
         .set('Authorization', `Bearer ${accessTokenAnggota}`)
         .send({
           title: 'Buku Gagal',
@@ -148,7 +169,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('GET /books — daftar buku berisi buku baru', async () => {
       const res = await request(app.getHttpServer())
-        .get('/books')
+        .get(`${API}/books`)
         .set('Authorization', `Bearer ${accessTokenAnggota}`)
         .expect(200);
 
@@ -160,7 +181,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
   describe('Loans (PETUGAS)', () => {
     it('POST /loans — PETUGAS meminjam buku ke anggota', async () => {
       const res = await request(app.getHttpServer())
-        .post('/loans')
+        .post(`${API}/loans`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ memberId, bookId })
         .expect(201);
@@ -174,7 +195,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('POST /loans — ditolak bila bukan PETUGAS (403)', async () => {
       await request(app.getHttpServer())
-        .post('/loans')
+        .post(`${API}/loans`)
         .set('Authorization', `Bearer ${accessTokenAnggota}`)
         .send({ memberId, bookId })
         .expect(403);
@@ -182,7 +203,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('PATCH /loans/:id/return — kembalikan buku tepat waktu (tanpa denda)', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/loans/${loan1Id}/return`)
+        .patch(`${API}/loans/${loan1Id}/return`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ loanId: loan1Id })
         .expect(200);
@@ -195,7 +216,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('POST /loans — pinjam kedua kali (stok kembali terisi)', async () => {
       const res = await request(app.getHttpServer())
-        .post('/loans')
+        .post(`${API}/loans`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ memberId, bookId })
         .expect(201);
@@ -206,7 +227,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('PATCH /loans/:id/lost — tandai hilang, Fine HILANG dibuat', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/loans/${loan2Id}/lost`)
+        .patch(`${API}/loans/${loan2Id}/lost`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .expect(200);
 
@@ -217,7 +238,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
   describe('Fines', () => {
     it('POST /loans — DITOLAK 409 selama ada fine belum lunas', async () => {
       await request(app.getHttpServer())
-        .post('/loans')
+        .post(`${API}/loans`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ memberId, bookId })
         .expect(409);
@@ -225,7 +246,7 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('GET /fines — berisi fine HILANG dari peminjaman yang hilang', async () => {
       const res = await request(app.getHttpServer())
-        .get('/fines')
+        .get(`${API}/fines`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .expect(200);
 
@@ -235,21 +256,21 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
       expect(fine).toBeDefined();
       expect(fine.status).toBe('BELUM_LUNAS');
       expect(fine.reason).toBe('HILANG');
-      expect(fine.amount).toBe(100000); // = nilai buku
+      expect(fine.amount).toBe(100000);
 
       fineId = fine.id;
     });
 
     it('PATCH /fines/:id/pay — ditolak bila bukan PETUGAS (403)', async () => {
       await request(app.getHttpServer())
-        .patch(`/fines/${fineId}/pay`)
+        .patch(`${API}/fines/${fineId}/pay`)
         .set('Authorization', `Bearer ${accessTokenAnggota}`)
         .expect(403);
     });
 
     it('PATCH /fines/:id/pay — PETUGAS lunaskan fine (status LUNAS)', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/fines/${fineId}/pay`)
+        .patch(`${API}/fines/${fineId}/pay`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .expect(200);
 
@@ -259,14 +280,14 @@ describe('E2E — alur perpustakaan (register → login → books → loans → 
 
     it('POST /loans — blokir terbuka setelah fine lunas', async () => {
       const res = await request(app.getHttpServer())
-        .post('/loans')
+        .post(`${API}/loans`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ memberId, bookId })
         .expect(201);
 
       // kembalikan lagi supaya stok bersih
       await request(app.getHttpServer())
-        .patch(`/loans/${res.body.id}/return`)
+        .patch(`${API}/loans/${res.body.id}/return`)
         .set('Authorization', `Bearer ${accessTokenPetugas}`)
         .send({ loanId: res.body.id })
         .expect(200);

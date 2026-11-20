@@ -15,8 +15,13 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('mengembalikan info server + versi app & API', () => {
+      expect(appController.getHello()).toEqual({
+        name: 'perpustakaan',
+        version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+        apiVersion: 'v1',
+        status: 'ok',
+      });
     });
   });
 });

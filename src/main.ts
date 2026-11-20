@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { AppModule } from './app.module.js';
+import { API_VERSION, APP_VERSION } from './app-info.js';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -19,15 +20,23 @@ async function bootstrap() {
     }),
   );
 
-  // Dokumentasi interaktif OpenAPI — buka /docs saat server berjalan.
+  // Prefix global /api + versioning URI → semua route jadi /api/v1/...
+  // (GET / dikecualikan; dipanggil sebelum createDocument agar spec ikut /api/v1.)
+  app.setGlobalPrefix('api', { exclude: ['/'] });
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: API_VERSION,
+  });
+
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Perpustakaan API')
     .setDescription(
       'Backend perpustakaan — peminjaman & pengembalian buku. ' +
-        'Semua endpoint (kecuali register & login) butuh token JWT ' +
-        'dari POST /auth/login; mutasi butuh role PETUGAS.',
+        `Base URL: /api/v${API_VERSION} (contoh: POST /api/v1/auth/login). ` +
+        'Semua endpoint (kecuali register & login) butuh token JWT; ' +
+        'mutasi butuh role PETUGAS.',
     )
-    .setVersion('1.0.0')
+    .setVersion(APP_VERSION)
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
@@ -36,6 +45,8 @@ async function bootstrap() {
   const PORT = process.env.PORT;
   await app.listen(PORT ?? 3000);
 
-  console.log(`${new Date()} Server Running At localhost:${PORT}`);
+  console.log(
+    `${new Date()} Server Running At localhost:${PORT ?? 3000} API Docs: /docs`,
+  );
 }
 await bootstrap();

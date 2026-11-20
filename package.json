@@ -1,6 +1,6 @@
 {
   "name": "perpustakaan",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Backend sistem perpustakaan — CRUD buku & anggota, peminjaman/pengembalian, denda, & JWT auth",
   "author": "",
   "private": true,
