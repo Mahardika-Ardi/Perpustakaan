@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Depedency
-        run: npm ci
+        run: npm install
 
   pre-build:
     needs: install-dependencies
@@ -42,6 +42,7 @@ jobs:
           retention-days: 1
 
   test:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
