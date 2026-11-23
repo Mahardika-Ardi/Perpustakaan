@@ -5,35 +5,27 @@ on:
     branches: [main]
 
 jobs:
-  setup:
+  # JOB 1: Semua proses yang memakai folder & node_modules yang sama wajib di 1 job
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'v26.8.1'
       - name: Clone github repository
         uses: actions/checkout@v4
 
-  install-dependencies:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Depedency
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.1'
+
+      - name: Install Dependency
         run: npm install
 
-  pre-build:
-    needs: install-dependencies
-    runs-on: ubuntu-latest
-    steps:
       - name: Generate prisma
         run: npx prisma generate
-  build:
-    needs: pre-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Application build simulation
+
+      - name: Application build
         run: npm run build
+
       - name: Upload dist to artifact
         uses: actions/upload-artifact@v4
         with:
@@ -41,20 +33,31 @@ jobs:
           path: dist/
           retention-days: 1
 
+  # JOB 2: Berjalan paralel dengan Job 1 (karena tidak memakai 'needs')
   test:
-    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Simulasi Build Proyek
-        run: |
-          echo "Mengompilasi file aplikasi..."
-          sleep 5
-          echo "Build selesai!"
+      - name: Clone github repository
+        uses: actions/checkout@v4
 
+      - name: Simulasi Testing Proyek
+        run: |
+          echo "Menjalankan pengecekan kode..."
+          sleep 5
+          echo "Testing selesai!"
+
+  # JOB 3: Menunggu 'build' dan 'test' sukses, lalu mengambil hasil artifact
   deploy-ke-server:
-    needs: test
+    needs: [build, test]
     runs-on: ubuntu-latest
     steps:
+      - name: Download hasil build dari artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-result
+          path: dist/
+
       - name: Simulasi Deploy
-        run: echo "Tes dan build sukses! Mengunggah aplikasi ke server..."
+        run: |
+          echo "Tes dan build sukses! File siap diunggah ke server:"
+          ls -la dist/
