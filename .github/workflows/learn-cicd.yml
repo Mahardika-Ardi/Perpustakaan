@@ -35,6 +35,7 @@ jobs:
 
   # JOB 2: Berjalan paralel dengan Job 1 (karena tidak memakai 'needs')
   unit-test:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Clone github repository
