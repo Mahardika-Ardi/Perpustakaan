@@ -10,14 +10,20 @@ jobs:
     steps:
       - name: Clone github repository
         uses: actions/checkout@v4
-
-      - name: Github build simulation
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'v26.8.1'
+      - name: Install Depedency
+        run: npm ci
+      - name: Application build simulation
         run: npm run build
       - name: Upload dist to artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-result
           path: dist/
+          retention-days: 1
 
   test:
     runs-on: ubuntu-latest
