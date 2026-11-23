@@ -19,3 +19,20 @@ jobs:
           echo "Memulai proses build..."
           ls -la
           echo "Build selesai dan aplikasi siap tayang!"
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulasi Build Proyek
+        run: |
+          echo "Mengompilasi file aplikasi..."
+          sleep 5
+          echo "Build selesai!"
+
+  deploy-ke-server:
+    needs: [test-and-build, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simulasi Deploy
+        run: echo "Tes dan build sukses! Mengunggah aplikasi ke server..."
