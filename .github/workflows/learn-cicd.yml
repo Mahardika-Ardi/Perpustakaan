@@ -5,17 +5,30 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  setup:
     runs-on: ubuntu-latest
     steps:
-      - name: Clone github repository
-        uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 'v26.8.1'
+      - name: Clone github repository
+        uses: actions/checkout@v4
+
+  install-dependencies:
+    runs-on: ubuntu-latest
+    steps:
       - name: Install Depedency
         run: npm ci
+
+  pre-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate prisma
+        run: npx prisma generate
+  build:
+    runs-on: ubuntu-latest
+    steps:
       - name: Application build simulation
         run: npm run build
       - name: Upload dist to artifact
