@@ -5,94 +5,34 @@ on:
     branches: [main]
 
 jobs:
-  # JOB 1: Semua proses yang memakai folder & node_modules yang sama wajib di 1 job
+  # JOB 1: Tarik pembaruan kode, install package, dan build langsung di folder VM
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Clone github repository
-        uses: actions/checkout@v4
+      - name: Update kode & build aplikasi
+        run: |
+          cd ~/perpustakaan
+          git pull origin main
+          npm install
+          npx prisma generate
+          npm run build
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '26.8.1'
-
-      - name: Install Dependency
-        run: npm install
-
-      - name: Generate prisma
-        run: npx prisma generate
-
-      - name: Application build
-        run: npm run build
-
-      - name: Upload dist to artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-result
-          path: dist/
-          retention-days: 1
-
-  # JOB 2: Berjalan paralel dengan Job 1 (karena tidak memakai 'needs')
+  # JOB 2: Langsung jalankan unit test di folder yang sama (tanpa clone & install ulang)
   unit-test:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Clone github repository
-        uses: actions/checkout@v4
+      - name: Jalankan unit test
+        run: |
+          cd ~/apps/Perpustakaan
+          npm test
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '26.8.1'
-
-      - name: Install Dependency
-        run: npm install
-
-      - name: Generate prisma
-        run: npx prisma generate
-
-      - name: Jalankan Unit Test
-        run: npm test
-
-  # JOB 3: Menunggu 'build' dan 'test' sukses, lalu mengambil hasil artifact
+  # JOB 3: Langsung restart PM2 karena kode dan hasil build sudah siap di folder tersebut
   deploy-to-server:
     needs: unit-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      # 1. Wajib ada agar package.json tersedia untuk npm start
-      - name: Clone github repository
-        uses: actions/checkout@v4
-
-      # 2. Siapkan Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '26.8.1'
-
-      # 3. Instal dependensi yang dibutuhkan untuk menjalankan server
-      - name: Install Dependency
-        run: npm install
-
-      # 4. Generate Prisma (hapus langkah ini jika server tidak memakai Prisma saat startup)
-      - name: Generate prisma
-        run: npx prisma generate
-
-      # 5. Ambil folder dist/ hasil build dari job sebelumnya
-      - name: Download hasil build dari artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-result
-          path: dist/
-
-      # 6. Jalankan npm start selama 5 detik, lalu hentikan otomatis
-      - name: Simulasi Deploy (Jalankan & Hentikan Server)
+      - name: Restart aplikasi dengan PM2
         run: |
-          EXIT_CODE=0
-          timeout 5s npm start || EXIT_CODE=$?
-          if [ $EXIT_CODE -eq 124 ]; then
-            echo "Server berhasil menyala selama 5 detik dan dihentikan dengan aman!"
-          else
-            echo "Server gagal menyala atau langsung crash (Exit code: $EXIT_CODE)"
-            exit 1
-          fi
+          cd ~/apps/Perpustakaan
+          pm2 restart perpustakaan
