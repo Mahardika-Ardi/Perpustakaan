@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Jalankan unit test
         run: |
-          cd ~/apps/Perpustakaan
+          cd ~/perpustakaan
           npm test
 
   # JOB 3: Langsung restart PM2 karena kode dan hasil build sudah siap di folder tersebut
@@ -34,5 +34,5 @@ jobs:
     steps:
       - name: Restart aplikasi dengan PM2
         run: |
-          cd ~/apps/Perpustakaan
+          cd ~/perpustakaan
           pm2 restart perpustakaan
